@@ -42,13 +42,13 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
     string = list(string)
     for i, char in enumerate(string):
         if exclude_characters is None or char not in exclude_characters:
-            string[i] = random_char_replacement(
+            string[i] = str(random_char_replacement(
                 char, keep_ascii=keep_ascii,
                 keep_ascii_case=keep_ascii_case,
                 keep_whitespace=keep_whitespace,
                 keep_symbolic=keep_symbolic,
                 keep_numeric=keep_numeric
-            )
+            ))
 
     for i in range(padding_before):
         string = random_char_replacement() + string
@@ -65,7 +65,8 @@ def randomness(old_value, column_type):
     # do something depending on column type
     # need more column types
     if column_type == 'ip_address':
-        return '1.2.3.4'
+        # Possibly need to make this smarter to keep subnet classes
+        return random_str_replacement(old_value, exclude_characters='.')
     if column_type == 'hostname':
         return random_str_replacement(old_value, exclude_characters='_-')
     else:
