@@ -1,0 +1,83 @@
+commit 2c6920371388a777ad5a741c4f515f1f2a120141
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Wed Oct 9 10:19:19 2013 +1100
+
+    Move source into fuzzy_happiness package
+
+commit 14daf960a811531cfae142bbe344cbd25b9ad1e5
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Wed Oct 9 10:18:45 2013 +1100
+
+    Add in fuzzy_happiness package
+
+commit 5c4c31bc89fd5593b2fdfb675ce62ab2331de6a6
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Wed Oct 9 10:17:50 2013 +1100
+
+    Add in license headers
+
+commit 230e683bd485540b942708ae97dc84d27f8dba8d
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Wed Oct 9 10:16:35 2013 +1100
+
+    Refactor random methods into own folder
+
+commit bb46a8f4befcfaa3f06aff531440e3372cf9fb7a
+Merge: 0a5aafb 7cd9aef
+Author: Michael Davies <michael@the-davies.net>
+Date:   Mon Oct 7 20:34:04 2013 -0700
+
+    Merge pull request #3 from jhesketh/sqlalchemy
+    
+    Sqlalchemy
+
+commit 0a5aafbd84ed233c40e5f2f8583e34194e88c997
+Author: Michael Davies <michael@the-davies.net>
+Date:   Tue Oct 8 13:44:31 2013 +1030
+
+    Proof of concept SQL anonymisation code.
+
+commit 7cd9aef51893450f92e00fe63b1f5bb4938e42f6
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Mon Oct 7 14:05:46 2013 +1100
+
+    add support for ipv4 address
+
+commit e923b9957c95697e1a5f778fe859168f14a36164
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Mon Oct 7 13:34:47 2013 +1100
+
+    Proof of concept sqlalchemy fuzzifier
+
+commit 5d0b8a7af79213d00750aac8e975bb9385a8e324
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Mon Oct 7 13:36:15 2013 +1100
+
+    add sql files to git_ignore
+
+commit 8bca1bd18697821cbf5269e93f6569a02470c040
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Mon Oct 7 10:55:36 2013 +1100
+
+    Fix regex to optionally match substitution type and better whitespace support
+
+commit b784fc26d629b1634ef35d5cb4ea80202d0f975f
+Merge: a9772cc 14bfbfd
+Author: Joshua Hesketh <josh@nitrotech.org>
+Date:   Thu Oct 3 19:24:31 2013 -0700
+
+    Merge pull request #1 from mikalstill/attributes
+    
+    A simple attribute parser.
+
+commit 14bfbfd47a71eb1a4b23786de64a447ce0b3df05
+Author: Michael Still <mikal@stillhq.com>
+Date:   Thu Oct 3 14:37:09 2013 +1000
+
+    A simple attribute parser.
+
+commit a9772cc1c521a542f9dd1139135041bdc26339e5
+Author: Michael Still <mikal@stillhq.com>
+Date:   Wed Oct 2 20:42:02 2013 -0700
+
+    Initial commit
