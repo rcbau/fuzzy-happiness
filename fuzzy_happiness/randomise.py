@@ -87,7 +87,7 @@ def randomness(old_value, column_type):
         return random_str_replacement(old_value, keep_numeric=True)
     elif column_type == 'float':
         return random_str_replacement(old_value, keep_numeric=True,
-                                      keep_symbolic=True)
+                                      exclude_characters='.')
     else:
         return random_str_replacement(old_value)
 
