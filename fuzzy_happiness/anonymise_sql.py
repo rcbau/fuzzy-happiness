@@ -61,15 +61,15 @@ _anon_fields['fixed_ips'] = {}
 _anon_fields['certificates'] = {}
 _anon_fields['instance_actions_events'] = {}
 # Testing int, bigint, tinyint
-_anon_fields['compute_nodes']['vcpus'] = {"type" : "int(11)", "kind" : "random" }
-_anon_fields['fixed_ips']['allocated'] = {"type" : "tinyint(1)", "kind" : "random" }
+_anon_fields['compute_nodes']['vcpus'] = {"type" : "int(11)" }
+_anon_fields['fixed_ips']['allocated'] = {"type" : "tinyint(1)" }
 # Testing mediumtext, varchar, text
-_anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext", "kind" : "random" }
+_anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext" }
 # TODO: certificates:user_id is actually a hex string and needs quoting.  This should be handled.
-_anon_fields['certificates']['user_id'] = {"type" : "varchar(255)", "kind" : "random" }
-_anon_fields['instance_actions_events']['traceback'] = {"type" : "text", "kind" : "random" }
+_anon_fields['certificates']['user_id'] = {"type" : "varchar(255)" }
+_anon_fields['instance_actions_events']['traceback'] = {"type" : "text" }
 # Testing float
-_anon_fields['instance_types']['rxtx_factor'] = {"type" : "float", "kind" : "random" }
+_anon_fields['instance_types']['rxtx_factor'] = {"type" : "float" }
 ## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
@@ -180,9 +180,7 @@ def _anonymise(line, table_index, table):
                         print "**** Can't continue, exiting..."
                         exit(-1)
                     # Anonymise
-                    row_elems[idx] = _transmogrify(row_elems[idx],
-                                        _schema[table][idx]['type'],
-                                        _anon_fields[table][field_key]['kind'])
+                    row_elems[idx] = _transmogrify(row_elems[idx], _schema[table][idx]['type'])
         return ",".join(row_elems)
     else:
         # Give back the line unadultered, no anonymising for this table
@@ -204,8 +202,8 @@ def _dump_stats(filename):
         print key, "appears", _type_table[key], "times"
 
 
-def _transmogrify(string, strtype, anon_scheme):
-    """ Anonymise the provide string, based upon it's strtype, using the supplied anon_scheme """
+def _transmogrify(string, strtype):
+    """ Anonymise the provide string, based upon it's strtype """
     # Note(mrda): TODO: handle mapping
     # Note(mrda): TODO: handle JSON and other embedded rich data structures (if reqd)
 
