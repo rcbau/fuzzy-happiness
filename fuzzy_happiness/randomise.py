@@ -20,9 +20,12 @@ import sys
 
 def random_char_replacement(character='', keep_ascii=True,
                             keep_ascii_case=True, keep_whitespace=True,
-                            keep_symbolic=True, keep_numeric=True):
+                            keep_symbolic=True, keep_numeric=True,
+                            keep_hexadecimal=True):
     """Replace a character optionally keeping its type"""
-    if character.isdigit() and keep_numeric:
+    if (character.isdigit() or character in 'ABCDEFabcdef') and keep_hexadecimal:
+        return random.choice(list('abcdef' + string.digits))
+    elif character.isdigit() and keep_numeric:
         return random.randrange(9)
     elif character in string.ascii_letters and keep_ascii:
         if keep_ascii_case and character.islower():
@@ -43,11 +46,9 @@ def random_char_replacement(character='', keep_ascii=True,
 def random_str_replacement(string, padding_before=0, padding_after=0,
                            keep_ascii=True, keep_ascii_case=True,
                            keep_whitespace=True, keep_symbolic=True,
-                           keep_numeric=True, exclude_characters=None):
+                           keep_numeric=True, keep_hexadecimal=True,
+                           exclude_characters=None):
     """Replace each character in a string optionally keep its type"""
-     # Note(mrda): TODO: We need to potentially scan the string to determine
-     # unspecified typing.  If a string looks like a hexstring, we should preserve
-     # it even after randomisation
     string = list(string)
     for i, char in enumerate(string):
         if exclude_characters is None or char not in exclude_characters:
@@ -56,7 +57,8 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
                 keep_ascii_case=keep_ascii_case,
                 keep_whitespace=keep_whitespace,
                 keep_symbolic=keep_symbolic,
-                keep_numeric=keep_numeric
+                keep_numeric=keep_numeric,
+                keep_hexadecimal=keep_hexadecimal
             ))
 
     for i in range(padding_before):
@@ -75,6 +77,8 @@ def randomness(old_value, column_type):
     if column_type == 'ip_address':
         # Possibly need to make this smarter to keep subnet classes
         return random_str_replacement(old_value, exclude_characters='.')
+    elif column_type == 'hexstring':
+        return random_str_replacement(old_value, keep_hexadecimal=True)
     elif column_type == 'hostname':
         return random_str_replacement(old_value, exclude_characters='_-')
     elif (column_type == 'varchar' or

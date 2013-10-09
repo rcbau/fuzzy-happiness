@@ -66,7 +66,7 @@ _anon_fields['fixed_ips']['allocated'] = {"type" : "tinyint(1)" }
 # Testing mediumtext, varchar, text
 _anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext" }
 # TODO: certificates:user_id is actually a hex string and needs quoting.  This should be handled.
-_anon_fields['certificates']['user_id'] = {"type" : "varchar(255)" }
+_anon_fields['certificates']['user_id'] = {"type" : "hexstring" }
 _anon_fields['instance_actions_events']['traceback'] = {"type" : "text" }
 # Testing float
 _anon_fields['instance_types']['rxtx_factor'] = {"type" : "float" }
@@ -171,14 +171,6 @@ def _anonymise(line, table_index, table):
             # i.e. where is this field?
             for idx in _schema[table]:
                 if _schema[table][idx]['name'] == field_key:
-                    # Check that all things match between the provided
-                    # anonymisation table and what we found in the schema
-                    if _schema[table][idx]['type'] !=  _anon_fields[table][field_key]['type']:
-                        print "**** Mismatch on type.  In table `" + table + "`, field `" + field_key + \
-                              "` has type `" +  _schema[table][idx]['type'] + " in the SQL and type `" + \
-                              _anon_fields[table][field_key]['type'] + "` from the docstrings"
-                        print "**** Can't continue, exiting..."
-                        exit(-1)
                     # Anonymise
                     row_elems[idx] = _transmogrify(row_elems[idx], _schema[table][idx]['type'])
         return ",".join(row_elems)
