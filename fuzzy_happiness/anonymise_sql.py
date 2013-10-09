@@ -53,11 +53,14 @@ _anon_fields['compute_nodes']['id'] = {"type" : "int(11)", "kind" : "random" }
 _anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext", "kind" : "random" }
 
 _UNDEF = "UNDEFINED"
+DEBUG = False
 
 # Note(mrda): These globals should be passed around rather than referenced globally
 _current_table_name = _UNDEF
 _current_table_index = 0
 _schema = {}
+_type_table = {}
+
 
 def process_line(line):
     """ Process each line in a mini state machine """
@@ -66,6 +69,7 @@ def process_line(line):
     global _current_table_name
     global _current_table_index
     global _schema
+    global _type_table
 
     # Skip comments and blanks and things I don't care about
     if _re_blanks.match(line) or _re_comments.match(line) or \
@@ -93,6 +97,11 @@ def process_line(line):
             _schema[_current_table_name][_current_table_index] = \
                 {'name' : m.group("index_name"),
                  'type' : m.group("index_type") }
+            if m.group("index_type") not in _type_table.keys():
+                _type_table[m.group("index_type")] = 0
+            else:
+                _type_table[m.group("index_type")] += 1
+
             return line
 
     # Find the end of tables
@@ -112,6 +121,7 @@ def process_line(line):
                                   m.group("insert_values"),\
                                   line)
 
+
 def _parse_insert_data(table, values, line):
     """ Parse INSERT values, anonymising where required """
     elems = re.split('\),\(', values)
@@ -127,6 +137,7 @@ def _parse_insert_data(table, values, line):
         i += 1
     anonymised_str = '),('.join(anon_elems)
     return 'INSERT INTO `' + table + '` VALUES (' + anonymised_str + ');\n'
+
 
 def _anonymise(line, table_index, table):
     """ Anonymise the supplied line if this table needs anonymising """
@@ -157,9 +168,25 @@ def _anonymise(line, table_index, table):
         # Give back the line unadultered, no anonymising for this table
         return line
 
+
+def _dump_stats(filename):
+    global _schema
+    global _type_table
+
+    print "\nStatistics for file `" + filename + "`\n"
+    # Traverse the _schema
+    print "Table Statistics"
+    for table in _schema:
+        print "Table `" + table + "` has " + str(len(_schema[table].keys())) + " rows."
+    # Print the type table
+    print "\nTypes found in SQL Schema"
+    for key in _type_table:
+        print key, "appears", _type_table[key], "times"
+
+
 def _transmogrify(str, strtype, anon_scheme):
     """ Anoymise the provide str, based upon it's strtype, using the supplied anon_scheme """
-    # TODO, do things based on strtype
+    # TODO: handle mapping
     return "bonkers"
 
 if __name__ == '__main__':
@@ -172,4 +199,5 @@ if __name__ == '__main__':
             with open(output_filename, 'w') as w:
                 for line in r:
                     w.write(process_line(line))
-
+        if DEBUG:
+            _dump_stats(sys.argv[1])
