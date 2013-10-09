@@ -14,7 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-
 #
 # SQL Data Anonymiser - proof of concept
 #
@@ -24,10 +23,9 @@
 # 2) Need to write the anonymisation code for all data types.
 #    'bonkers' is probably not a sufficient anonymisation value for all data types :)
 #
-# Copyright (C) 2013 Michael Davies <michael@the-davies.net>, Rackspace Hosting
-#
 import sys
 import re
+import randomise
 
 #
 # SQL by regular expressions
@@ -187,7 +185,7 @@ def _dump_stats(filename):
 def _transmogrify(str, strtype, anon_scheme):
     """ Anoymise the provide str, based upon it's strtype, using the supplied anon_scheme """
     # TODO: handle mapping
-    return "bonkers"
+    return randomise.randomness(str, strtype)
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
