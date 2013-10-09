@@ -77,11 +77,13 @@ def randomness(old_value, column_type):
         return random_str_replacement(old_value, exclude_characters='.')
     elif column_type == 'hostname':
         return random_str_replacement(old_value, exclude_characters='_-')
-    elif column_type == 'varchar' or column_type == 'text' or \
-       column_type == 'mediumtext':
+    elif (column_type == 'varchar' or
+          column_type == 'text' or
+          column_type == 'mediumtext'):
         return random_str_replacement(old_value)
-    elif column_type == 'bigint' or column_type == 'tinyint' or \
-       column_type == 'int':
+    elif (column_type == 'bigint' or
+          column_type == 'tinyint' or
+          column_type == 'int'):
         return random_str_replacement(old_value, keep_numeric=True)
     elif column_type == 'float':
         return random_str_replacement(old_value, keep_numeric=True,
