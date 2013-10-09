@@ -45,6 +45,9 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
                            keep_whitespace=True, keep_symbolic=True,
                            keep_numeric=True, exclude_characters=None):
     """Replace each character in a string optionally keep its type"""
+     # Note(mrda): TODO: We need to potentially scan the string to determine
+     # unspecified typing.  If a string looks like a hexstring, we should preserve
+     # it even after randomisation
     string = list(string)
     for i, char in enumerate(string):
         if exclude_characters is None or char not in exclude_characters:
@@ -68,12 +71,21 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
 def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
-    # do something depending on column type
-    # need more column types
+    # Note(mrda): TODO: Need to support datetime
     if column_type == 'ip_address':
         # Possibly need to make this smarter to keep subnet classes
         return random_str_replacement(old_value, exclude_characters='.')
-    if column_type == 'hostname':
+    elif column_type == 'hostname':
         return random_str_replacement(old_value, exclude_characters='_-')
+    elif column_type == 'varchar' or column_type == 'text' or \
+       column_type == 'mediumtext':
+        return random_str_replacement(old_value)
+    elif column_type == 'bigint' or column_type == 'tinyint' or \
+       column_type == 'int':
+        return random_str_replacement(old_value, keep_numeric=True)
+    elif column_type == 'float':
+        return random_str_replacement(old_value, keep_numeric=True,
+                                      keep_symbolic=True)
     else:
         return random_str_replacement(old_value)
+

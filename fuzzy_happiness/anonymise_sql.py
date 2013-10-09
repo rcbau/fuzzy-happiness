@@ -40,15 +40,37 @@ _re_table_index = re.compile(r'^\s*`(?P<index_name>([A-Za-z_0-9]+))`\s+(?P<index
 _re_unneeded_table_sql = re.compile(r'^\s*((PRIMARY\sKEY)|(KEY)|(CONSTRAINT)|(UNIQUE\sKEY))')
 _re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`\sVALUES\s(?P<insert_values>(.*));')
 
+# Regex to pull apart SQL types
+_re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))(\((?P<typesize>([1-9]?[0-9]+))\))?')
+
 #
 # Static definition of which data fields should be anonymised
-# Note(mrda): Need to build this programatically from the parsed
-# docstrings
+# Note(mrda): TODO: Need to build this programatically from the parsed
+# docstrings.  See https://github.com/mikalstill/nova/blob/anonymise/nova/db/sqlalchemy/models.py
+# as an example
+#
+## <<< START TEST DATA >>>
+#
+# Note(mrda): TODO: Need to test:
+#   'bigint' type anonymisation
 #
 _anon_fields = {}
 _anon_fields['compute_nodes'] = {}
-_anon_fields['compute_nodes']['id'] = {"type" : "int(11)", "kind" : "random" }
+_anon_fields['instance_types'] = {}
+_anon_fields['fixed_ips'] = {}
+_anon_fields['certificates'] = {}
+_anon_fields['instance_actions_events'] = {}
+# Testing int, bigint, tinyint
+_anon_fields['compute_nodes']['vcpus'] = {"type" : "int(11)", "kind" : "random" }
+_anon_fields['fixed_ips']['allocated'] = {"type" : "tinyint(1)", "kind" : "random" }
+# Testing mediumtext, varchar, text
 _anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext", "kind" : "random" }
+# TODO: certificates:user_id is actually a hex string and needs quoting.  This should be handled.
+_anon_fields['certificates']['user_id'] = {"type" : "varchar(255)", "kind" : "random" }
+_anon_fields['instance_actions_events']['traceback'] = {"type" : "text", "kind" : "random" }
+# Testing float
+_anon_fields['instance_types']['rxtx_factor'] = {"type" : "float", "kind" : "random" }
+## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
 DEBUG = False
@@ -182,10 +204,26 @@ def _dump_stats(filename):
         print key, "appears", _type_table[key], "times"
 
 
-def _transmogrify(str, strtype, anon_scheme):
-    """ Anoymise the provide str, based upon it's strtype, using the supplied anon_scheme """
-    # TODO: handle mapping
-    return randomise.randomness(str, strtype)
+def _transmogrify(string, strtype, anon_scheme):
+    """ Anonymise the provide string, based upon it's strtype, using the supplied anon_scheme """
+    # Note(mrda): TODO: handle mapping
+    # Note(mrda): TODO: handle JSON and other embedded rich data structures (if reqd)
+
+    # Handle quoted strings
+    need_single_quotes = False
+    if string[0] == "'" and string[-1] == "'":
+        need_single_quotes = True
+        string = string[1:-1]
+
+    typeinfo = strtype
+    m = _re_sql_types.search(strtype)
+    if m:
+        typeinfo = m.group('typename')
+    randomised = randomise.randomness(string, typeinfo)
+    if need_single_quotes:
+        randomised = "'" + randomised + "'"
+    return randomised
+
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
