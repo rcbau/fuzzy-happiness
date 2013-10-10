@@ -26,7 +26,7 @@ def random_char_replacement(character='', keep_ascii=True,
     if (character.isdigit() or character in 'ABCDEFabcdef') and keep_hexadecimal:
         return random.choice(list('abcdef' + string.digits))
     elif character.isdigit() and keep_numeric:
-        return random.randrange(9)
+        return str(random.randrange(9))
     elif character in string.ascii_letters and keep_ascii:
         if keep_ascii_case and character.islower():
             return random.choice(string.ascii_lowercase)
@@ -52,14 +52,14 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
     string = list(string)
     for i, char in enumerate(string):
         if exclude_characters is None or char not in exclude_characters:
-            string[i] = str(random_char_replacement(
+            string[i] = random_char_replacement(
                 char, keep_ascii=keep_ascii,
                 keep_ascii_case=keep_ascii_case,
                 keep_whitespace=keep_whitespace,
                 keep_symbolic=keep_symbolic,
                 keep_numeric=keep_numeric,
                 keep_hexadecimal=keep_hexadecimal
-            ))
+            )
 
     for i in range(padding_before):
         string = random_char_replacement() + string
