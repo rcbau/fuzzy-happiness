@@ -20,9 +20,12 @@ import sys
 
 def random_char_replacement(character='', keep_ascii=True,
                             keep_ascii_case=True, keep_whitespace=True,
-                            keep_symbolic=True, keep_numeric=True):
+                            keep_symbolic=True, keep_numeric=True,
+                            keep_hexadecimal=True):
     """Replace a character optionally keeping its type"""
-    if character.isdigit() and keep_numeric:
+    if (character.isdigit() or character in 'ABCDEFabcdef') and keep_hexadecimal:
+        return random.choice(list('abcdef' + string.digits))
+    elif character.isdigit() and keep_numeric:
         return random.randrange(9)
     elif character in string.ascii_letters and keep_ascii:
         if keep_ascii_case and character.islower():
@@ -43,7 +46,8 @@ def random_char_replacement(character='', keep_ascii=True,
 def random_str_replacement(string, padding_before=0, padding_after=0,
                            keep_ascii=True, keep_ascii_case=True,
                            keep_whitespace=True, keep_symbolic=True,
-                           keep_numeric=True, exclude_characters=None):
+                           keep_numeric=True, keep_hexadecimal=True,
+                           exclude_characters=None):
     """Replace each character in a string optionally keep its type"""
     string = list(string)
     for i, char in enumerate(string):
@@ -53,7 +57,8 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
                 keep_ascii_case=keep_ascii_case,
                 keep_whitespace=keep_whitespace,
                 keep_symbolic=keep_symbolic,
-                keep_numeric=keep_numeric
+                keep_numeric=keep_numeric,
+                keep_hexadecimal=keep_hexadecimal
             ))
 
     for i in range(padding_before):
@@ -68,12 +73,25 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
 def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
-    # do something depending on column type
-    # need more column types
+    # Note(mrda): TODO: Need to support datetime
     if column_type == 'ip_address':
         # Possibly need to make this smarter to keep subnet classes
         return random_str_replacement(old_value, exclude_characters='.')
-    if column_type == 'hostname':
+    elif column_type == 'hexstring':
+        return random_str_replacement(old_value, keep_hexadecimal=True)
+    elif column_type == 'hostname':
         return random_str_replacement(old_value, exclude_characters='_-')
+    elif (column_type == 'varchar' or
+          column_type == 'text' or
+          column_type == 'mediumtext'):
+        return random_str_replacement(old_value)
+    elif (column_type == 'bigint' or
+          column_type == 'tinyint' or
+          column_type == 'int'):
+        return random_str_replacement(old_value, keep_numeric=True)
+    elif column_type == 'float':
+        return random_str_replacement(old_value, keep_numeric=True,
+                                      exclude_characters='.')
     else:
         return random_str_replacement(old_value)
+
