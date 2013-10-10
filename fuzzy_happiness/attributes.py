@@ -24,7 +24,7 @@ import re
 from nova.db.sqlalchemy import models
 
 
-ANON_CONFIG_RE = re.compile('^\s*:anon\s+(\S+):\s+(\S+)\s+(\S+)?\s*$')
+ANON_CONFIG_RE = re.compile('^\s*:anon\s+(\S+):\s+(\S+)(\s+(\S+))?\s*$')
 
 
 def load_configuration():
