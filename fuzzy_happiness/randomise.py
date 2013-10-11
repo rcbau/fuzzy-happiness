@@ -106,7 +106,7 @@ def randomness(old_value, column_type):
     elif column_type == 'hexstring':
         return random_str_replacement(old_value, keep_hexadecimal=True)
     elif column_type == 'hostname':
-        replacement_dict = _REPLACEMENT_DICTIONARY
+        replacement_dict = _REPLACEMENT_DICTIONARY.copy()
         replacement_dict['symbolic'] = (list('!@#$%^&*()~`"\',/<>?:;\\|[]{}'),
                                         _SYMBOLIC)
         replacement_dict['keep'] = (list('.-_'), None)
