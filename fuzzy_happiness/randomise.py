@@ -14,52 +14,53 @@
 
 import random
 import re
-import string
+import string as st
 import sys
 
 
 def random_char_replacement(character='', keep_ascii=True,
                             keep_ascii_case=True, keep_whitespace=True,
                             keep_symbolic=True, keep_numeric=True,
-                            keep_hexadecimal=True):
-    """Replace a character optionally keeping its type"""
-    if (character.isdigit() or character in 'ABCDEFabcdef') and keep_hexadecimal:
-        return random.choice(list('abcdef' + string.digits))
-    elif character.isdigit() and keep_numeric:
-        return str(random.randrange(9))
-    elif character in string.ascii_letters and keep_ascii:
+                            allowed_chars=None):
+
+    if allowed_chars: # ignore all other options
+        return random.choice(allowed_chars)
+
+    if character in st.ascii_letters and keep_ascii:
         if keep_ascii_case and character.islower():
-            return random.choice(string.ascii_lowercase)
+            return random.choice(st.ascii_lowercase)
         elif keep_ascii_case and character.isupper():
-            return random.choice(string.ascii_uppercase)
+            return random.choice(st.ascii_uppercase)
         else:
-            return random.choice(string.ascii_letters)
+            return random.choice(st.ascii_letters)
     elif re.match(r'\s', character) and keep_whitespace:
-        return character
-    elif character not in string.ascii_letters and keep_symbolic:
+        return character # don't substitute whitespace
+    elif character not in st.ascii_letters and keep_symbolic:
         return random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}'))
+    elif character in st.digits and keep_numeric:
+        return random.choice(list(st.digits))
     else:
         return random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}' +
-                                  string.ascii_letters))
+                                  st.ascii_letters +
+                                  st.digits))
 
 
-def random_str_replacement(string, padding_before=0, padding_after=0,
-                           keep_ascii=True, keep_ascii_case=True,
-                           keep_whitespace=True, keep_symbolic=True,
-                           keep_numeric=True, keep_hexadecimal=True,
-                           exclude_characters=None):
-    """Replace each character in a string optionally keep its type"""
+def random_str_replacement(string,
+                           allowed_chars=st.ascii_letters,
+                           exclude_chars=None,
+                           padding_before=0,
+                           padding_after=0):
+    """Perform random character substitution on the provided string, allowing
+       padding before and after, and an optional set of characters that can
+       be used for substitution"""
+
     string = list(string)
+    allowed_chars = allowed_chars
+
     for i, char in enumerate(string):
-        if exclude_characters is None or char not in exclude_characters:
-            string[i] = random_char_replacement(
-                char, keep_ascii=keep_ascii,
-                keep_ascii_case=keep_ascii_case,
-                keep_whitespace=keep_whitespace,
-                keep_symbolic=keep_symbolic,
-                keep_numeric=keep_numeric,
-                keep_hexadecimal=keep_hexadecimal
-            )
+        if exclude_chars is None or char not in exclude_chars:
+            string[i] = str(random_char_replacement(char,
+                                allowed_chars=allowed_chars))
 
     for i in range(padding_before):
         string = random_char_replacement() + string
@@ -68,6 +69,39 @@ def random_str_replacement(string, padding_before=0, padding_after=0,
         string = string + random_char_replacement()
 
     return ''.join(string)
+
+
+def random_hexstring_replacement(string, padding_before=0, padding_after=0):
+    """Randomise each character in a hexadecimal string"""
+    return random_str_replacement(string, 'abcdef0123456789', None,
+                                  padding_before, padding_after)
+
+
+def random_pathname_replacement(string, padding_before=0, padding_after=0):
+    """Randomise files and directories for a path, preserving directory
+       structure"""
+    # Note(mrda): Everything but /, \ and whitespace (while whitespace is
+    # allowed in pathnames, it can prove diffficult to manage, so we won't
+    # allow it for anonymisation
+    allowed_chars = (st.ascii_letters + st.digits +
+                     '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
+
+    return random_str_replacement(string, allowed_chars, '\/\\',
+                                  padding_before, padding_after)
+
+
+def random_ipaddress_replacement(string, padding_before=0, padding_after=0):
+    """Randomise each character in a IP Address string"""
+    # Note(mrda): TODO: Should be extended for IPv6 addresses
+    candidates = []
+    for i in range(4):
+        octet = ""
+        while True:
+            octet = random_str_replacement("123", st.digits)
+            if int(octet) < 255:
+                break
+        candidates.append(octet)
+    return ".".join(candidates)
 
 
 def randomness(old_value, column_type):
