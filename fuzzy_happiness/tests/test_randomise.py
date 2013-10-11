@@ -17,11 +17,11 @@ import string
 import random
 import re
 
-from randomise import random_char_replacement
-from randomise import random_hexstring_replacement
-from randomise import random_str_replacement
-from randomise import random_pathname_replacement
-from randomise import random_ipaddress_replacement
+from fuzzy_happiness.randomise import random_char_replacement
+from fuzzy_happiness.randomise import random_hexstring_replacement
+from fuzzy_happiness.randomise import random_str_replacement
+from fuzzy_happiness.randomise import random_pathname_replacement
+from fuzzy_happiness.randomise import random_ipaddress_replacement
 
 class TestRandomCharReplacement(testtools.TestCase):
 
