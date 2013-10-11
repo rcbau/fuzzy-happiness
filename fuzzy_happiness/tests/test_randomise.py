@@ -23,8 +23,8 @@ from fuzzy_happiness.randomise import random_str_replacement
 from fuzzy_happiness.randomise import random_pathname_replacement
 from fuzzy_happiness.randomise import random_ipaddress_replacement
 
-class TestRandomCharReplacement(testtools.TestCase):
 
+class TestRandomCharReplacement(testtools.TestCase):
     def test_simple_letter(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
@@ -97,7 +97,7 @@ class TestRandomStrReplacement(testtools.TestCase):
     def test_big_sample(self):
         for i in range(100):
             strng = ""
-            for j in range(random.randint(1,1000)):
+            for j in range(random.randint(1, 1000)):
                 strng += random.choice(string.letters)
             for k in list(random_str_replacement(strng)):
                 self.assertIn(k, string.ascii_letters)
@@ -131,10 +131,9 @@ class TestRandomStrReplacement(testtools.TestCase):
 
 
 class TestRandomPathnameReplacement(testtools.TestCase):
-
     def test_file(self):
         possible_chars = (string.ascii_letters + string.digits +
-                            '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
+                          '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
         for i in range(100):
             new_str = random_pathname_replacement('foobar')
             for c in list(new_str):
@@ -144,10 +143,9 @@ class TestRandomPathnameReplacement(testtools.TestCase):
         new_str = random_pathname_replacement('/')
         self.assertEqual(new_str, '/')
 
-
     def test_path(self):
         possible_chars = (string.ascii_letters + string.digits +
-                            '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
+                          '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
         for i in range(100):
             new_str = random_pathname_replacement('/foo/bar')
             self.assertIn(new_str[0], '/')
@@ -161,9 +159,10 @@ class TestRandomPathnameReplacement(testtools.TestCase):
 
 
 class TestRandomIPAddressReplacement(testtools.TestCase):
-
     def test_simple_ipv4(self):
-        v4addr = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+        v4addr = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
         new_addr = random_ipaddress_replacement('192.168.1.6')
         self.assertTrue(v4addr.match(new_addr))
-

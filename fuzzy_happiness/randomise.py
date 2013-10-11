@@ -13,9 +13,7 @@
 # under the License.
 
 import random
-import re
 import string as st
-import sys
 
 
 _LOWERCASE_LETTERS = list(st.ascii_lowercase)
@@ -32,6 +30,7 @@ _REPLACEMENT_DICTIONARY = {
     'whitespace': (_WHITESPACE, None)
 }
 
+
 def random_char_replacement(character=None,
                             replacement_dictionary=_REPLACEMENT_DICTIONARY):
     if character is not None:
@@ -44,6 +43,7 @@ def random_char_replacement(character=None,
 
     return random.choice(_ANY)
 
+
 def random_str_replacement(string,
                            replacement_dictionary=_REPLACEMENT_DICTIONARY,
                            padding_before=0,
@@ -52,14 +52,14 @@ def random_str_replacement(string,
        padding before and after, and an optional set of characters that can
        be used for substitution"""
 
-    if string == None:
+    if string is None:
         return None
 
     string = list(string)
 
     for i, char in enumerate(string):
-        string[i] = random_char_replacement(char,
-            replacement_dictionary=replacement_dictionary)
+        string[i] = random_char_replacement(
+            char, replacement_dictionary=replacement_dictionary)
 
     for i in range(padding_before):
         string = random_char_replacement(
@@ -102,7 +102,7 @@ def random_ipaddress_replacement(string, padding_before=0, padding_after=0):
     # Note(mrda): TODO: Should be extended for IPv6 addresses
     candidates = []
     for i in range(4):
-        octet = str(random.randint(1,254))
+        octet = str(random.randint(1, 254))
         candidates.append(octet)
     return ".".join(candidates)
 

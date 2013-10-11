@@ -19,10 +19,9 @@ from sqlalchemy.orm import sessionmaker
 from nova.db.sqlalchemy import models
 from nova.db.sqlalchemy import utils
 
-import os
-
 import attributes
 from randomise import randomness
+
 
 def fuzzify(engine, config):
     """Do the actual fuzzification based on the loaded attributes of
@@ -45,12 +44,14 @@ def fuzzify(engine, config):
                             randomness(getattr(row, column), column_type))
     session.commit()
 
+
 if __name__ == '__main__':
     # Import the database to modify
     #os.system('mysql -u root nova_fuzzy < nova.sql')
 
     # Set up the session
-    engine = create_engine('mysql://root:tester@localhost/nova_fuzzy', echo=True)
+    engine = create_engine('mysql://root:tester@localhost/nova_fuzzy',
+                           echo=True)
 
     # Grab the randomisation commands
     config = attributes.load_configuration()
