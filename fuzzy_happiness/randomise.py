@@ -22,12 +22,14 @@ _LOWERCASE_LETTERS = list(st.ascii_lowercase)
 _UPPERCASE_LETTERS = list(st.ascii_uppercase)
 _NUMERIC = list(st.digits)
 _SYMBOLIC = list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}')
+_WHITESPACE = list(st.whitespace)
 _ANY = _LOWERCASE_LETTERS + _UPPERCASE_LETTERS + _NUMERIC + _SYMBOLIC
 _REPLACEMENT_DICTIONARY = {
     'lowercase_letters': (_LOWERCASE_LETTERS, _LOWERCASE_LETTERS),
     'uppercase_letters': (_UPPERCASE_LETTERS, _UPPERCASE_LETTERS),
     'numeric': (_NUMERIC, _NUMERIC),
     'symbolic': (_SYMBOLIC, _SYMBOLIC),
+    'whitespace': (_WHITESPACE, None)
 }
 
 def random_char_replacement(character=None,
@@ -56,20 +58,26 @@ def random_str_replacement(string,
     string = list(string)
 
     for i, char in enumerate(string):
-        string[i] = random_char_replacement(char)
+        string[i] = random_char_replacement(char,
+            replacement_dictionary=replacement_dictionary)
 
     for i in range(padding_before):
-        string = random_char_replacement() + string
+        string = random_char_replacement(
+            replacement_dictionary=replacement_dictionary) + string
 
     for i in range(padding_after):
-        string = string + random_char_replacement()
+        string = string + random_char_replacement(
+            replacement_dictionary=replacement_dictionary)
 
     return ''.join(string)
 
 
 def random_hexstring_replacement(string, padding_before=0, padding_after=0):
     """Randomise each character in a hexadecimal string"""
-    return random_str_replacement(string, 'abcdef0123456789', None,
+    replacement_dict = {
+        'hex': (list(st.hexdigits), list(st.hexdigits))
+    }
+    return random_str_replacement(string, replacement_dict,
                                   padding_before, padding_after)
 
 
@@ -80,9 +88,12 @@ def random_pathname_replacement(string, padding_before=0, padding_after=0):
     # allowed in pathnames, it can prove diffficult to manage, so we won't
     # allow it for anonymisation
     allowed_chars = (st.ascii_letters + st.digits +
-                     '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
+                     '!@#$%^&*()~`"\',<>?:;|[]{}')
 
-    return random_str_replacement(string, allowed_chars, '\/\\',
+    replacement_dict = _REPLACEMENT_DICTIONARY.copy()
+    replacement_dict['symbolic'] = (allowed_chars, allowed_chars)
+    replacement_dict['keep'] = (list('.-_/\\'), None)
+    return random_str_replacement(string, replacement_dict,
                                   padding_before, padding_after)
 
 
