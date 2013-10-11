@@ -54,6 +54,9 @@ def random_str_replacement(string,
        padding before and after, and an optional set of characters that can
        be used for substitution"""
 
+    if string == None:
+        return None
+
     string = list(string)
 
     for i, char in enumerate(string):

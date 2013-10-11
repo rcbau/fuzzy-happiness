@@ -17,21 +17,33 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 from nova.db.sqlalchemy import models
+from nova.db.sqlalchemy import utils
 
 import os
 
 import attributes
 from randomise import randomness
 
-def fuzzify(session, config):
+def fuzzify(engine, config):
     """Do the actual fuzzification based on the loaded attributes of
        the models."""
-    for table, columns in config.items():
-        q = session.query(getattr(models, table))
-        for row in q.all():
-            for column, column_type in columns:
-                setattr(row, column,
-                        randomness(getattr(row, column), column_type))
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    metadata = MetaData(bind=engine, reflect=True)
+
+    for table_name, columns in config.items():
+        tables = [getattr(models, table_name)]
+        if 'shadow_' + table_name in metadata.tables:
+            tables.append(
+                utils.get_table(engine, 'shadow_' + table_name))
+
+        for table in tables:
+            q = session.query(table)
+            for row in q.all():
+                for column, column_type in columns:
+                    setattr(row, column,
+                            randomness(getattr(row, column), column_type))
+    session.commit()
 
 if __name__ == '__main__':
     # Import the database to modify
@@ -39,15 +51,12 @@ if __name__ == '__main__':
 
     # Set up the session
     engine = create_engine('mysql://root:tester@localhost/nova_fuzzy', echo=True)
-    Session = sessionmaker(bind=engine)
-    session = Session()
 
     # Grab the randomisation commands
     config = attributes.load_configuration()
 
     # Perform fuzzification and save back to database
-    fuzzify(session, config)
-    session.commit()
+    fuzzify(engine, config)
 
     # Dump the modified database
     # os.system('mysqldump -u root nova_fuzzy > nova_fuzzy.sql')
