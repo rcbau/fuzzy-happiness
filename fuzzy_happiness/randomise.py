@@ -55,12 +55,11 @@ def random_str_replacement(string,
        be used for substitution"""
 
     string = list(string)
-    allowed_chars = allowed_chars
 
     for i, char in enumerate(string):
         if exclude_chars is None or char not in exclude_chars:
-            string[i] = str(random_char_replacement(char,
-                                allowed_chars=allowed_chars))
+            string[i] = random_char_replacement(char,
+                                allowed_chars=allowed_chars)
 
     for i in range(padding_before):
         string = random_char_replacement() + string
