@@ -28,92 +28,41 @@ class TestRandomCharReplacement(testtools.TestCase):
     def test_simple_letter(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list(string.ascii_letters)),
-                            keep_ascii=True,
-                            keep_ascii_case=False,
-                            keep_whitespace=False,
-                            keep_symbolic=False,
-                            keep_numeric=False),
-                          list(string.ascii_letters))
+                random.choice(list(string.ascii_letters))),
+                list(string.ascii_letters))
 
     def test_simple_digit(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list(string.digits)),
-                            keep_ascii=False,
-                            keep_ascii_case=False,
-                            keep_whitespace=False,
-                            keep_symbolic=False,
-                            keep_numeric=True),
-                          list(string.digits))
+                random.choice(list(string.digits))),
+                list(string.digits))
 
     def test_simple_lc_letter(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list(string.ascii_lowercase)),
-                            keep_ascii=True,
-                            keep_ascii_case=True,
-                            keep_whitespace=False,
-                            keep_symbolic=False,
-                            keep_numeric=False),
-                          list(string.ascii_lowercase))
+                random.choice(list(string.ascii_lowercase))),
+                list(string.ascii_lowercase))
 
     def test_simple_uc_letter(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list(string.ascii_uppercase)),
-                            keep_ascii=True,
-                            keep_ascii_case=True,
-                            keep_whitespace=False,
-                            keep_symbolic=False,
-                            keep_numeric=False),
-                          list(string.ascii_uppercase))
+                random.choice(list(string.ascii_uppercase))),
+                list(string.ascii_uppercase))
 
     def test_simple_whitespace(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list(string.whitespace)),
-                            keep_ascii=False,
-                            keep_ascii_case=False,
-                            keep_whitespace=True,
-                            keep_symbolic=False,
-                            keep_numeric=False),
-                          list(string.whitespace))
+                random.choice(list(string.whitespace))),
+                list(string.whitespace))
 
     def test_simple_symbols(self):
         for i in range(100):
             self.assertIn(random_char_replacement(
-                            random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}')),
-                            keep_ascii=False,
-                            keep_ascii_case=False,
-                            keep_whitespace=False,
-                            keep_symbolic=True,
-                            keep_numeric=False),
-                          list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}'))
+                random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}'))),
+                list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}'))
 
-    def test_allowed_chars_from_symbols(self):
-        for i in range(100):
-            self.assertIn(random_char_replacement(
-                            random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}')),
-                            allowed_chars="abc"),
-                          list('abc'))
-
-    def test_allowed_chars_from_letters_to_numbers(self):
-        for i in range(100):
-            self.assertIn(random_char_replacement(
-                            random.choice(list(string.ascii_letters)),
-                            allowed_chars=string.digits),
-                          list(string.digits))
-
-    def test_allowed_chars_from_letters_singular(self):
-        for i in range(100):
-            self.assertIn(random_char_replacement(
-                            random.choice(list(string.ascii_letters)),
-                            allowed_chars='k'),
-                          list('k'))
 
 class TestRandomHexStringReplacement(testtools.TestCase):
-
     def test_happy_hex_day_single(self):
         allowable = list(string.hexdigits)
         new_str = random_hexstring_replacement("a")
@@ -140,7 +89,6 @@ class TestRandomHexStringReplacement(testtools.TestCase):
 
 
 class TestRandomStrReplacement(testtools.TestCase):
-
     def test_simple(self):
         for i in range(100):
             for j in list(random_str_replacement("fred")):
@@ -158,29 +106,28 @@ class TestRandomStrReplacement(testtools.TestCase):
         self.assertIn(random_str_replacement('q'), string.ascii_letters)
 
     def test_restricted_char(self):
-        self.assertIn(random_str_replacement('c', 'c'), 'c')
+        replacement_dict = {
+            'numeric': (string.ascii_letters, list('c')),
+        }
+        self.assertIn(random_str_replacement('c', replacement_dict), 'c')
 
     def test_numbers(self):
         allowable = list(string.digits)
-        new_str = random_str_replacement("foo", allowable)
+        replacement_dict = {
+            'numeric': (string.ascii_letters, allowable),
+        }
+        new_str = random_str_replacement("foo", replacement_dict)
         for i in new_str:
             self.assertIn(i, allowable)
 
     def test_letters(self):
         allowable = list("jklmnop")
-        new_str = random_str_replacement("racoon", allowable)
+        replacement_dict = {
+            'letters': (string.ascii_letters, allowable),
+        }
+        new_str = random_str_replacement("racoon", replacement_dict)
         for i in new_str:
             self.assertIn(i, allowable)
-
-    def test_exclude(self):
-        new_str = random_str_replacement("giraffe", exclude_chars='fi')
-        self.assertIn(new_str[0], string.ascii_letters)
-        self.assertIn(new_str[1], 'i')
-        self.assertIn(new_str[2], string.ascii_letters)
-        self.assertIn(new_str[3], string.ascii_letters)
-        self.assertIn(new_str[4], 'f')
-        self.assertIn(new_str[5], 'f')
-        self.assertIn(new_str[6], string.ascii_letters)
 
 
 class TestRandomPathnameReplacement(testtools.TestCase):
