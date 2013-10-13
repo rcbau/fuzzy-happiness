@@ -13,69 +13,71 @@
 # under the License.
 
 import random
-import re
 import string as st
-import sys
 
 
-def random_char_replacement(character='', keep_ascii=True,
-                            keep_ascii_case=True, keep_whitespace=True,
-                            keep_symbolic=True, keep_numeric=True,
-                            allowed_chars=None):
+_LOWERCASE_LETTERS = list(st.ascii_lowercase)
+_UPPERCASE_LETTERS = list(st.ascii_uppercase)
+_NUMERIC = list(st.digits)
+_SYMBOLIC = list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}')
+_WHITESPACE = list(st.whitespace)
+_ANY = _LOWERCASE_LETTERS + _UPPERCASE_LETTERS + _NUMERIC + _SYMBOLIC
+_REPLACEMENT_DICTIONARY = {
+    'lowercase_letters': (_LOWERCASE_LETTERS, _LOWERCASE_LETTERS),
+    'uppercase_letters': (_UPPERCASE_LETTERS, _UPPERCASE_LETTERS),
+    'numeric': (_NUMERIC, _NUMERIC),
+    'symbolic': (_SYMBOLIC, _SYMBOLIC),
+    'whitespace': (_WHITESPACE, None)
+}
 
-    if allowed_chars: # ignore all other options
-        return random.choice(allowed_chars)
 
-    if character in st.ascii_letters and keep_ascii:
-        if keep_ascii_case and character.islower():
-            return random.choice(st.ascii_lowercase)
-        elif keep_ascii_case and character.isupper():
-            return random.choice(st.ascii_uppercase)
-        else:
-            return random.choice(st.ascii_letters)
-    elif re.match(r'\s', character) and keep_whitespace:
-        return character # don't substitute whitespace
-    elif character not in st.ascii_letters and keep_symbolic:
-        return random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}'))
-    elif character in st.digits and keep_numeric:
-        return random.choice(list(st.digits))
-    else:
-        return random.choice(list('!@#$%^&*()_-~`"\',./<>?:;\\|[]{}' +
-                                  st.ascii_letters +
-                                  st.digits))
+def random_char_replacement(character=None,
+                            replacement_dictionary=_REPLACEMENT_DICTIONARY):
+    if character is not None:
+        for search, replace in replacement_dictionary.values():
+            if character in search:
+                if replace is None:
+                    # Do no replace this character with anything
+                    return character
+                return random.choice(replace)
+
+    return random.choice(_ANY)
 
 
 def random_str_replacement(string,
-                           allowed_chars=st.ascii_letters,
-                           exclude_chars=None,
+                           replacement_dictionary=_REPLACEMENT_DICTIONARY,
                            padding_before=0,
                            padding_after=0):
     """Perform random character substitution on the provided string, allowing
        padding before and after, and an optional set of characters that can
        be used for substitution"""
 
-    if string == None:
+    if string is None:
         return None
 
     string = list(string)
 
     for i, char in enumerate(string):
-        if exclude_chars is None or char not in exclude_chars:
-            string[i] = random_char_replacement(char,
-                                allowed_chars=allowed_chars)
+        string[i] = random_char_replacement(
+            char, replacement_dictionary=replacement_dictionary)
 
     for i in range(padding_before):
-        string = random_char_replacement() + string
+        string = random_char_replacement(
+            replacement_dictionary=replacement_dictionary) + string
 
     for i in range(padding_after):
-        string = string + random_char_replacement()
+        string = string + random_char_replacement(
+            replacement_dictionary=replacement_dictionary)
 
     return ''.join(string)
 
 
 def random_hexstring_replacement(string, padding_before=0, padding_after=0):
     """Randomise each character in a hexadecimal string"""
-    return random_str_replacement(string, 'abcdef0123456789', None,
+    replacement_dict = {
+        'hex': (list(st.hexdigits), list(st.hexdigits))
+    }
+    return random_str_replacement(string, replacement_dict,
                                   padding_before, padding_after)
 
 
@@ -86,9 +88,12 @@ def random_pathname_replacement(string, padding_before=0, padding_after=0):
     # allowed in pathnames, it can prove diffficult to manage, so we won't
     # allow it for anonymisation
     allowed_chars = (st.ascii_letters + st.digits +
-                     '!@#$%^&*()_-~`"\',.<>?:;|[]{}')
+                     '!@#$%^&*()~`"\',<>?:;|[]{}')
 
-    return random_str_replacement(string, allowed_chars, '\/\\',
+    replacement_dict = _REPLACEMENT_DICTIONARY.copy()
+    replacement_dict['symbolic'] = (allowed_chars, allowed_chars)
+    replacement_dict['keep'] = (list('.-_/\\'), None)
+    return random_str_replacement(string, replacement_dict,
                                   padding_before, padding_after)
 
 
@@ -97,11 +102,7 @@ def random_ipaddress_replacement(string, padding_before=0, padding_after=0):
     # Note(mrda): TODO: Should be extended for IPv6 addresses
     candidates = []
     for i in range(4):
-        octet = ""
-        while True:
-            octet = random_str_replacement("123", st.digits)
-            if int(octet) < 255:
-                break
+        octet = str(random.randint(1, 254))
         candidates.append(octet)
     return ".".join(candidates)
 
@@ -112,22 +113,26 @@ def randomness(old_value, column_type):
     # Note(mrda): TODO: Need to support datetime
     if column_type == 'ip_address':
         # Possibly need to make this smarter to keep subnet classes
-        return random_str_replacement(old_value, exclude_characters='.')
+        return random_ipaddress_replacement(old_value)
     elif column_type == 'hexstring':
         return random_str_replacement(old_value, keep_hexadecimal=True)
     elif column_type == 'hostname':
-        return random_str_replacement(old_value, exclude_characters='_-')
-    elif (column_type == 'varchar' or
-          column_type == 'text' or
-          column_type == 'mediumtext'):
+        replacement_dict = _REPLACEMENT_DICTIONARY.copy()
+        replacement_dict['symbolic'] = (list('!@#$%^&*()~`"\',/<>?:;\\|[]{}'),
+                                        _SYMBOLIC)
+        replacement_dict['keep'] = (list('.-_'), None)
+        return random_str_replacement(old_value,
+                                      replacement_dictionary=replacement_dict)
+    elif column_type in ('varchar', 'text', 'mediumtext'):
         return random_str_replacement(old_value)
-    elif (column_type == 'bigint' or
-          column_type == 'tinyint' or
-          column_type == 'int'):
-        return random_str_replacement(old_value, keep_numeric=True)
+    elif column_type in ('bigint', 'tinyint', 'int'):
+        return random_str_replacement(old_value)
     elif column_type == 'float':
-        return random_str_replacement(old_value, keep_numeric=True,
-                                      exclude_characters='.')
+        replacement_dict = {
+            'numeric': (_NUMERIC, _NUMERIC),
+            'symbolic': (list('.'), None)
+        }
+        return random_str_replacement(old_value,
+                                      replacement_dictionary=replacement_dict)
     else:
         return random_str_replacement(old_value)
-

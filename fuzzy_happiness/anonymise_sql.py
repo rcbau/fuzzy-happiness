@@ -18,35 +18,45 @@
 # SQL Data Anonymiser - proof of concept
 #
 # Still to do:
-# 1) Need to write the reflection code to get at the docstrings to determine which fields need
-#    anonymising
+# 1) Need to write the reflection code to get at the docstrings to determine
+#    which fields need anonymising
 # 2) Need to write the anonymisation code for all data types.
-#    'bonkers' is probably not a sufficient anonymisation value for all data types :)
+#    'bonkers' is probably not a sufficient anonymisation value for all data
+#    types :)
 #
+
 import sys
 import re
 import randomise
 
+
 #
 # SQL by regular expressions
-# Note(mrda): If the SQL input format changes, these regexs will need changing too
+# Note(mrda): If the SQL input format changes, these regexs will need changing
+#             too
 #
 _re_blanks = re.compile(r'^(\s)*$')
 _re_comments = re.compile(r'^((--)|(\/\*)).*')
-_re_create_table = re.compile(r'^CREATE\sTABLE\s`(?P<table_name>([0-9A-Za-z_]+))`')
+_re_create_table = re.compile(r'^CREATE\sTABLE\s'
+                              r'`(?P<table_name>([0-9A-Za-z_]+))`')
 _re_end_create_table = re.compile(r'^\)\sENGINE=InnoDB')
 _re_sql_I_dont_care_about = re.compile(r'^(LOCK|UNLOCK|DROP)')
-_re_table_index = re.compile(r'^\s*`(?P<index_name>([A-Za-z_0-9]+))`\s+(?P<index_type>([A-Za-z_]+(\([0-9]+\))*))\s*')
-_re_unneeded_table_sql = re.compile(r'^\s*((PRIMARY\sKEY)|(KEY)|(CONSTRAINT)|(UNIQUE\sKEY))')
-_re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`\sVALUES\s(?P<insert_values>(.*));')
+_re_table_index = re.compile(r'^\s*`(?P<index_name>([A-Za-z_0-9]+))`\s+'
+                             r'(?P<index_type>([A-Za-z_]+(\([0-9]+\))*))\s*')
+_re_unneeded_table_sql = re.compile(r'^\s*((PRIMARY\sKEY)|(KEY)|(CONSTRAINT)|'
+                                    r'(UNIQUE\sKEY))')
+_re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`'
+                        r'\sVALUES\s(?P<insert_values>(.*));')
 
 # Regex to pull apart SQL types
-_re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))(\((?P<typesize>([1-9]?[0-9]+))\))?')
+_re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))'
+                           r'(\((?P<typesize>([1-9]?[0-9]+))\))?')
 
 #
 # Static definition of which data fields should be anonymised
 # Note(mrda): TODO: Need to build this programatically from the parsed
-# docstrings.  See https://github.com/mikalstill/nova/blob/anonymise/nova/db/sqlalchemy/models.py
+# docstrings.  See https://github.com/mikalstill/nova/blob/anonymise/nova/db/
+#                  sqlalchemy/models.py
 # as an example
 #
 ## <<< START TEST DATA >>>
@@ -61,21 +71,23 @@ _anon_fields['fixed_ips'] = {}
 _anon_fields['certificates'] = {}
 _anon_fields['instance_actions_events'] = {}
 # Testing int, bigint, tinyint
-_anon_fields['compute_nodes']['vcpus'] = {"type" : "int(11)" }
-_anon_fields['fixed_ips']['allocated'] = {"type" : "tinyint(1)" }
+_anon_fields['compute_nodes']['vcpus'] = {"type": "int(11)"}
+_anon_fields['fixed_ips']['allocated'] = {"type": "tinyint(1)"}
 # Testing mediumtext, varchar, text
-_anon_fields['compute_nodes']['cpu_info'] = {"type" : "mediumtext" }
-# TODO: certificates:user_id is actually a hex string and needs quoting.  This should be handled.
-_anon_fields['certificates']['user_id'] = {"type" : "hexstring" }
-_anon_fields['instance_actions_events']['traceback'] = {"type" : "text" }
+_anon_fields['compute_nodes']['cpu_info'] = {"type": "mediumtext"}
+# TODO: certificates:user_id is actually a hex string and needs quoting.
+#       This should be handled.
+_anon_fields['certificates']['user_id'] = {"type": "hexstring"}
+_anon_fields['instance_actions_events']['traceback'] = {"type": "text"}
 # Testing float
-_anon_fields['instance_types']['rxtx_factor'] = {"type" : "float" }
+_anon_fields['instance_types']['rxtx_factor'] = {"type": "float"}
 ## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
 DEBUG = False
 
-# Note(mrda): These globals should be passed around rather than referenced globally
+# Note(mrda): These globals should be passed around rather than referenced
+#             globally
 _current_table_name = _UNDEF
 _current_table_index = 0
 _schema = {}
@@ -115,8 +127,8 @@ def process_line(line):
         if m:
             _current_table_index += 1
             _schema[_current_table_name][_current_table_index] = \
-                {'name' : m.group("index_name"),
-                 'type' : m.group("index_type") }
+                {'name': m.group("index_name"),
+                 'type': m.group("index_type")}
             if m.group("index_type") not in _type_table.keys():
                 _type_table[m.group("index_type")] = 0
             else:
@@ -137,8 +149,8 @@ def process_line(line):
     # Also where the data is that needs anonymising is
     m = _re_insert.search(line)
     if m:
-        return _parse_insert_data(m.group("table_name"),\
-                                  m.group("insert_values"),\
+        return _parse_insert_data(m.group("table_name"),
+                                  m.group("insert_values"),
                                   line)
 
 
@@ -172,7 +184,8 @@ def _anonymise(line, table_index, table):
             for idx in _schema[table]:
                 if _schema[table][idx]['name'] == field_key:
                     # Anonymise
-                    row_elems[idx] = _transmogrify(row_elems[idx], _schema[table][idx]['type'])
+                    row_elems[idx] = _transmogrify(row_elems[idx],
+                                                   _schema[table][idx]['type'])
         return ",".join(row_elems)
     else:
         # Give back the line unadultered, no anonymising for this table
@@ -187,7 +200,8 @@ def _dump_stats(filename):
     # Traverse the _schema
     print "Table Statistics"
     for table in _schema:
-        print "Table `" + table + "` has " + str(len(_schema[table].keys())) + " rows."
+        print ("Table `" + table + "` has " + str(len(_schema[table].keys())) +
+               " rows.")
     # Print the type table
     print "\nTypes found in SQL Schema"
     for key in _type_table:
@@ -197,7 +211,8 @@ def _dump_stats(filename):
 def _transmogrify(string, strtype):
     """ Anonymise the provide string, based upon it's strtype """
     # Note(mrda): TODO: handle mapping
-    # Note(mrda): TODO: handle JSON and other embedded rich data structures (if reqd)
+    # Note(mrda): TODO: handle JSON and other embedded rich data structures (if
+    #                   reqd)
 
     # Handle quoted strings
     need_single_quotes = False
@@ -218,7 +233,8 @@ def _transmogrify(string, strtype):
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print "Usage: " + sys.argv[0] + " <filename>"
-        print "Anonymises the SQL found in <filename>, writing output to <filename>.output"
+        print ("Anonymises the SQL found in <filename>, writing output to "
+               "<filename>.output")
     else:
         with open(sys.argv[1], 'r') as r:
             output_filename = sys.argv[1] + ".output"
