@@ -81,7 +81,7 @@ def fuzzify(engine, config):
             tables.append(utils.get_table(engine, 'shadow_' + table_name))
         for table in tables:
             q = session.query(table)
-            for row in list(q.all()):
+            for row in q.all():
                 for column, column_type in columns:
                     setattr(row, column,
                             randomness(getattr(row, column), column_type))
