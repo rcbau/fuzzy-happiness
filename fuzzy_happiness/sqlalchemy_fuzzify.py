@@ -18,9 +18,65 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 from nova.db.sqlalchemy import models
 from nova.db.sqlalchemy import utils
+from migrate import ForeignKeyConstraint
 
 import attributes
 from randomise import randomness
+
+
+# hacky, make not global
+fkey_onupdate_restore = {}
+
+
+def cascade_fkeys(metadata):
+    """ Sets all fkeys to cascade on update """
+    global fkey_onupdate_restore
+    for table_name, table in metadata.tables.items():
+        for fkey in list(table.foreign_keys):
+            params = {
+                'columns': fkey.constraint.columns,
+                'refcolumns': [fkey.column],
+                'name': fkey.constraint.name,
+                'onupdate': fkey.constraint.onupdate,
+                'ondelete': fkey.constraint.ondelete,
+                'deferrable': fkey.constraint.deferrable,
+                'initially': fkey.constraint.initially,
+                'table': table
+            }
+            fkey_onupdate_restore[fkey.constraint.name] = \
+                fkey.constraint.onupdate
+
+            fkey_constraint = ForeignKeyConstraint(**params)
+            fkey_constraint.drop()
+
+            params['onupdate'] = 'CASCADE'
+            fkey_constraint = ForeignKeyConstraint(**params)
+            fkey_constraint.create()
+
+
+def restore_fkeys(metadata):
+    """ Restores the old cascade settings for each table """
+    global fkey_onupdate_restore
+    for table_name, table in metadata.tables.items():
+        for fkey in list(table.foreign_keys):
+            if fkey.constraint.name in fkey_onupdate_restore:
+                params = {
+                    'columns': fkey.constraint.columns,
+                    'refcolumns': [fkey.column],
+                    'name': fkey.constraint.name,
+                    'onupdate': fkey.constraint.onupdate,
+                    'ondelete': fkey.constraint.ondelete,
+                    'deferrable': fkey.constraint.deferrable,
+                    'initially': fkey.constraint.initially,
+                    'table': table
+                }
+                fkey_constraint = ForeignKeyConstraint(**params)
+                fkey_constraint.drop()
+
+                params['onupdate'] = \
+                    fkey_onupdate_restore[fkey.constraint.name]
+                fkey_constraint = ForeignKeyConstraint(**params)
+                fkey_constraint.create()
 
 
 def fuzzify(engine, config):
@@ -29,20 +85,22 @@ def fuzzify(engine, config):
     Session = sessionmaker(bind=engine)
     session = Session()
     metadata = MetaData(bind=engine, reflect=True)
+    cascade_fkeys(metadata)
 
-    for table_name, columns in config.items():
-        tables = [getattr(models, table_name)]
-        if 'shadow_' + table_name in metadata.tables:
-            tables.append(
-                utils.get_table(engine, 'shadow_' + table_name))
-
+    for model_name, columns in config.items():
+        table_name = getattr(models, model_name).__tablename__
+        tables = [getattr(models, model_name)]
+        if 'shadow_' + table_name in metadata.tables.keys():
+            tables.append(utils.get_table(engine, 'shadow_' + table_name))
         for table in tables:
             q = session.query(table)
-            for row in q.all():
+            for row in list(q.all()):
                 for column, column_type in columns:
                     setattr(row, column,
                             randomness(getattr(row, column), column_type))
+
     session.commit()
+    restore_fkeys(metadata)
 
 
 if __name__ == '__main__':
