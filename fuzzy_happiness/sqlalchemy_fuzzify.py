@@ -38,7 +38,8 @@ def cascade_fkeys(metadata, restore=False):
         for fkey in list(table.foreign_keys):
             if restore:
                 if fkey.constraint.name in cascade_fkeys.fkey_onupdate_restore:
-                    onupdate = cascade_fkeys.fkey_onupdate_restore[fkey.constraint.name]
+                    onupdate = cascade_fkeys.fkey_onupdate_restore[
+                        fkey.constraint.name]
                 else:
                     continue
             else:
@@ -56,7 +57,6 @@ def cascade_fkeys(metadata, restore=False):
                 'initially': fkey.constraint.initially,
                 'table': table
             }
-
 
             fkey_constraint = ForeignKeyConstraint(**params)
             fkey_constraint.drop()
