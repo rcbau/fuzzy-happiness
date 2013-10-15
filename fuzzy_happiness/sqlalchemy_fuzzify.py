@@ -24,22 +24,25 @@ import attributes
 from randomise import randomness
 
 
-# hacky, make not global
-fkey_onupdate_restore = {}
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+    return decorate
 
 
+@static_var('fkey_onupdate_restore', {})
 def cascade_fkeys(metadata, restore=False):
     """ Sets all fkeys to cascade on update """
-    global fkey_onupdate_restore
     for table_name, table in metadata.tables.items():
         for fkey in list(table.foreign_keys):
             if restore:
-                if fkey.constraint.name in fkey_onupdate_restore:
-                    onupdate = fkey_onupdate_restore[fkey.constraint.name]
+                if fkey.constraint.name in cascade_fkeys.fkey_onupdate_restore:
+                    onupdate = cascade_fkeys.fkey_onupdate_restore[fkey.constraint.name]
                 else:
                     continue
             else:
-                fkey_onupdate_restore[fkey.constraint.name] = \
+                cascade_fkeys.fkey_onupdate_restore[fkey.constraint.name] = \
                     fkey.constraint.onupdate
                 onupdate = "CASCADE"
 
