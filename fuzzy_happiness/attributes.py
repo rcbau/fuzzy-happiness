@@ -15,16 +15,15 @@
 # under the License.
 
 
-# Read doc comments and work out what fields to anonymize
+# Work out what fields to anonymize. To run a simple example, do this:
+#     cd <nova checkout dir>
+#     . .tox/py27/bin/activate
+#     <path to fuzzy happiness>/attributes.py
 
 
 import inspect
-import re
 
 from nova.db.sqlalchemy import models
-
-
-ANON_CONFIG_RE = re.compile('^\s*:anon\s+(\S+):\s+(\S+)(\s+(\S+))?\s*$')
 
 
 def load_configuration():
@@ -37,17 +36,10 @@ def load_configuration():
         if not issubclass(obj, models.NovaBase):
             continue
 
-        if not obj.__doc__:
+        if not hasattr(obj, '__anon__'):
             continue
 
-        attributes = []
-        for line in obj.__doc__.split('\n'):
-            m = ANON_CONFIG_RE.match(line)
-            if m:
-                attributes.append((m.group(1), m.group(2)))
-
-        if attributes:
-            configs[name] = attributes
+        configs[name] = obj.__anon__
 
     return configs
 
