@@ -230,7 +230,7 @@ def _transmogrify(string, strtype):
     return randomised
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) != 2:
         print "Usage: " + sys.argv[0] + " <filename>"
         print ("Anonymises the SQL found in <filename>, writing output to "
@@ -243,3 +243,7 @@ if __name__ == '__main__':
                     w.write(process_line(line))
         if DEBUG:
             _dump_stats(sys.argv[1])
+
+
+if __name__ == '__main__':
+    main()
