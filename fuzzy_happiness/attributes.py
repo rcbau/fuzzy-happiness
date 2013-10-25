@@ -36,10 +36,10 @@ def load_configuration():
         if not issubclass(obj, models.NovaBase):
             continue
 
-        if not hasattr(obj, '__anon__'):
+        if not hasattr(obj, '__confidential__'):
             continue
 
-        configs[name] = obj.__anon__
+        configs[name] = obj.__confidential__
 
     return configs
 
