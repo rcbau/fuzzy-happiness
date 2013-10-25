@@ -36,10 +36,17 @@ def load_configuration():
         if not issubclass(obj, models.NovaBase):
             continue
 
-        if not hasattr(obj, '__confidential__'):
+        attrs_missing = []
+        for required_attr in ['__tablename__', '__confidential__']:
+            if not hasattr(obj, required_attr):
+                attrs_missing.append(required_attr)
+
+        if attrs_missing:
+            print ('Required attributes %s missing from %s'
+                   %(', '.join(attrs_missing), name))
             continue
 
-        configs[name] = obj.__confidential__
+        configs[obj.__tablename__] = obj.__confidential__
 
     return configs
 
