@@ -111,9 +111,12 @@ def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
     # Note(mrda): TODO: Need to support datetime
-    if column_type == 'ip_address':
+    if column_type == 'ip_address_v4':
         # Possibly need to make this smarter to keep subnet classes
         return random_ipaddress_replacement(old_value)
+    elif column_type == 'ip_address_v6':
+        # TODO: implement V6
+        return old_value
     elif column_type == 'hexstring':
         return random_str_replacement(old_value, keep_hexadecimal=True)
     elif column_type == 'hostname':
@@ -134,5 +137,8 @@ def randomness(old_value, column_type):
         }
         return random_str_replacement(old_value,
                                       replacement_dictionary=replacement_dict)
+    elif column_type == 'datetime':
+        # TODO: implement time schmeer
+        return old_value
     else:
         return random_str_replacement(old_value)

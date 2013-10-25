@@ -18,9 +18,52 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 from nova.db.sqlalchemy import models
 from nova.db.sqlalchemy import utils
+from migrate import ForeignKeyConstraint
 
 import attributes
 from randomise import randomness
+
+
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+    return decorate
+
+
+@static_var('fkey_onupdate_restore', {})
+def cascade_fkeys(metadata, restore=False):
+    """ Sets all fkeys to cascade on update """
+    for table_name, table in metadata.tables.items():
+        for fkey in list(table.foreign_keys):
+            if restore:
+                if fkey.constraint.name in cascade_fkeys.fkey_onupdate_restore:
+                    onupdate = cascade_fkeys.fkey_onupdate_restore[
+                        fkey.constraint.name]
+                else:
+                    continue
+            else:
+                cascade_fkeys.fkey_onupdate_restore[fkey.constraint.name] = \
+                    fkey.constraint.onupdate
+                onupdate = "CASCADE"
+
+            params = {
+                'columns': fkey.constraint.columns,
+                'refcolumns': [fkey.column],
+                'name': fkey.constraint.name,
+                'onupdate': fkey.constraint.onupdate,
+                'ondelete': fkey.constraint.ondelete,
+                'deferrable': fkey.constraint.deferrable,
+                'initially': fkey.constraint.initially,
+                'table': table
+            }
+
+            fkey_constraint = ForeignKeyConstraint(**params)
+            fkey_constraint.drop()
+
+            params['onupdate'] = onupdate
+            fkey_constraint = ForeignKeyConstraint(**params)
+            fkey_constraint.create()
 
 
 def fuzzify(engine, config):
@@ -29,20 +72,22 @@ def fuzzify(engine, config):
     Session = sessionmaker(bind=engine)
     session = Session()
     metadata = MetaData(bind=engine, reflect=True)
+    cascade_fkeys(metadata)
 
-    for table_name, columns in config.items():
-        tables = [getattr(models, table_name)]
-        if 'shadow_' + table_name in metadata.tables:
-            tables.append(
-                utils.get_table(engine, 'shadow_' + table_name))
-
+    for model_name, columns in config.items():
+        table_name = getattr(models, model_name).__tablename__
+        tables = [getattr(models, model_name)]
+        if 'shadow_' + table_name in metadata.tables.keys():
+            tables.append(utils.get_table(engine, 'shadow_' + table_name))
         for table in tables:
             q = session.query(table)
             for row in q.all():
                 for column, column_type in columns:
                     setattr(row, column,
                             randomness(getattr(row, column), column_type))
+
     session.commit()
+    cascade_fkeys(metadata, restore=True)
 
 
 if __name__ == '__main__':
