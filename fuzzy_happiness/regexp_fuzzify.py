@@ -168,7 +168,7 @@ def _anonymise(line, table_index, table):
                 if _schema[table][idx]['name'] == field_key:
                     # Anonymise
                     row_elems[idx] = _transmogrify(row_elems[idx],
-                                                   _schema[table][idx])
+                                                   _schema[table][idx]['type'])
         return ",".join(row_elems)
     else:
         # Give back the line unadultered, no anonymising for this table
