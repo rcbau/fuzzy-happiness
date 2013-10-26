@@ -248,7 +248,3 @@ def main():
         _dump_stats(CONF.filename)
 
     return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main())

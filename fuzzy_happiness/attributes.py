@@ -54,7 +54,3 @@ def load_configuration():
 def main():
     CONF(sys.argv[1:], project='fuzzy-happiness')
     print load_configuration()
-
-
-if __name__ == '__main__':
-    main()
