@@ -37,6 +37,14 @@ import attributes
 
 CONF = cfg.CONF
 
+opts = [
+    cfg.BoolOpt('add_descriptive_comments',
+                default=True,
+                help=('Add comments to output describing what we did to a '
+                      'given table.'))
+]
+CONF.register_opts(opts)
+
 
 #
 # SQL by regular expressions
@@ -121,10 +129,31 @@ class Fuzzer(object):
         # Find the end of tables
         m = _re_end_create_table.match(line)
         if self.cur_table_name != _UNDEF and m:
+            additional = []
+            if CONF.add_descriptive_comments:
+                for idx in self.schema[self.cur_table_name]:
+                    col_name = self.schema[self.cur_table_name][idx]['name']
+                    config = self.anon_fields.get(self.cur_table_name, {})
+
+                    anon_type = config.get(col_name)
+                    anon_str = ''
+                    if anon_type:
+                        anon_str = ' (anonymized as %s)' % anon_type
+                    
+                    additional.append(
+                        '/* Fuzzy happiness field %s named %s is %s%s */'
+                        %(idx, col_name,
+                          self.schema[self.cur_table_name][idx]['type'],
+                          anon_str))
+
             self.cur_table_name = _UNDEF
             self.cur_table_index = 0
             if CONF.debug:
                 print '    ...end of table definition'
+
+            if additional:
+                line += '\n%s\n\n' % '\n'.join(additional)
+
             return line
 
         # Insert statements.  You will never find a more wretched hive
@@ -169,8 +198,8 @@ class Fuzzer(object):
             for idx in self.schema[table]:
                 if self.schema[table][idx]['name'] == field_key:
                     # Anonymise
-                    row_elems[idx] = self._transmogrify(
-                        row_elems[idx], self.schema[table][idx]['type'])
+                    row_elems[idx - 1] = self._transmogrify(
+                        row_elems[idx - 1], self.schema[table][idx]['type'])
         return ",".join(row_elems)
 
     def dump_stats(self, filename):
