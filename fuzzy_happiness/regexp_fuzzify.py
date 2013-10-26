@@ -95,7 +95,7 @@ def process_line(line):
     m = _re_create_table.search(line)
     if m:
         _current_table_name = m.group("table_name")
-        if _current_table_index not in _schema.keys():
+        if _current_table_index not in _schema:
             _schema[_current_table_name] = {}
         return line
 
@@ -112,7 +112,7 @@ def process_line(line):
             _schema[_current_table_name][_current_table_index] = \
                 {'name': m.group("index_name"),
                  'type': m.group("index_type")}
-            if m.group("index_type") not in _type_table.keys():
+            if m.group("index_type") not in _type_table:
                 _type_table[m.group("index_type")] = 0
             else:
                 _type_table[m.group("index_type")] += 1
@@ -157,7 +157,7 @@ def _parse_insert_data(table, values, line):
 def _anonymise(line, table_index, table):
     """ Anonymise the supplied line if this table needs anonymising """
     # Need to find if any columns from table need anonymising
-    if table in _anon_fields.keys():
+    if table in _anon_fields:
         # we have anonymising to do!
         row_elems = re.split(',', line)
 
@@ -183,7 +183,7 @@ def _dump_stats(filename):
     # Traverse the _schema
     print "Table Statistics"
     for table in _schema:
-        print ("Table `" + table + "` has " + str(len(_schema[table].keys())) +
+        print ("Table `" + table + "` has " + str(len(_schema[table])) +
                " rows.")
     # Print the type table
     print "\nTypes found in SQL Schema"
