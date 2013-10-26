@@ -43,7 +43,7 @@ def load_configuration():
 
         if attrs_missing:
             print ('Required attributes %s missing from %s'
-                   %(', '.join(attrs_missing), name))
+                   % (', '.join(attrs_missing), name))
             continue
 
         configs[obj.__tablename__] = obj.__confidential__

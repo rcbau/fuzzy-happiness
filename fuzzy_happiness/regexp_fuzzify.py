@@ -270,6 +270,7 @@ def main():
         with open(output_filename, 'w') as w:
             for line in r:
                 w.write(process_line(line))
+
     if CONF.debug:
         _dump_stats(CONF.filename)
 
