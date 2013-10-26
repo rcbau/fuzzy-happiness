@@ -25,9 +25,21 @@
 #    types :)
 #
 
-import sys
-import re
+import os
 import randomise
+import re
+import sys
+
+from oslo.config import cfg
+
+
+opts = [
+    cfg.BoolOpt('debug', default=False,
+                help='Emit debug messages.')
+]
+
+CONF = cfg.CONF
+CONF.register_opts(opts)
 
 
 #
@@ -84,7 +96,7 @@ _anon_fields['instance_types']['rxtx_factor'] = {"type": "float"}
 ## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
-DEBUG = False
+
 
 # Note(mrda): These globals should be passed around rather than referenced
 #             globally
@@ -230,20 +242,39 @@ def _transmogrify(string, strtype):
     return randomised
 
 
+filename_opt = cfg.StrOpt('filename',
+                          default=None,
+                          help='The filename to process',
+                          positional=True)
+
+
 def main():
-    if len(sys.argv) != 2:
-        print "Usage: " + sys.argv[0] + " <filename>"
-        print ("Anonymises the SQL found in <filename>, writing output to "
-               "<filename>.output")
-    else:
-        with open(sys.argv[1], 'r') as r:
-            output_filename = sys.argv[1] + ".output"
-            with open(output_filename, 'w') as w:
-                for line in r:
-                    w.write(process_line(line))
-        if DEBUG:
-            _dump_stats(sys.argv[1])
+    CONF.register_cli_opt(filename_opt)
+    CONF(sys.argv[1:],
+         project='fuzzy-happiness')
+
+    if not CONF.filename:
+        print 'Please specify a filename to process'
+        return 1
+
+    print 'Processing %s' % CONF.filename
+    if not os.path.exists(CONF.filename):
+        print 'Input file %s does not exist!' % CONF.filename
+        return 1
+    if not os.path.isfile(CONF.filename):
+        print 'Input %s is not a file!' % CONF.filename
+        return 1
+
+    with open(CONF.filename, 'r') as r:
+        output_filename = CONF.filename + ".output"
+        with open(output_filename, 'w') as w:
+            for line in r:
+                w.write(process_line(line))
+    if CONF.debug:
+        _dump_stats(CONF.filename)
+
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
