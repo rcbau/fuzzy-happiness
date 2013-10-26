@@ -35,13 +35,7 @@ from oslo.config import cfg
 import attributes
 
 
-opts = [
-    cfg.BoolOpt('debug', default=False,
-                help='Emit debug messages.')
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
 
 
 #
@@ -252,8 +246,7 @@ filename_opt = cfg.StrOpt('filename',
 
 def main():
     CONF.register_cli_opt(filename_opt)
-    CONF(sys.argv[1:],
-         project='fuzzy-happiness')
+    CONF(sys.argv[1:], project='fuzzy-happiness')
 
     if not CONF.filename:
         print 'Please specify a filename to process'
