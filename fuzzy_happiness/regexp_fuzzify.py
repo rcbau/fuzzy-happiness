@@ -32,6 +32,8 @@ import sys
 
 from oslo.config import cfg
 
+import attributes
+
 
 opts = [
     cfg.BoolOpt('debug', default=False,

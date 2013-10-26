@@ -51,5 +51,9 @@ def load_configuration():
     return configs
 
 
-if __name__ == '__main__':
+def main():
     print load_configuration()
+
+
+if __name__ == '__main__':
+    main()
