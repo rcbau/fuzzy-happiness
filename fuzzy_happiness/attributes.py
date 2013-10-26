@@ -15,15 +15,14 @@
 # under the License.
 
 
-# Work out what fields to anonymize. To run a simple example, do this:
-#     cd <nova checkout dir>
-#     . .tox/py27/bin/activate
-#     <path to fuzzy happiness>/attributes.py
-
-
 import inspect
+import sys
 
 from nova.db.sqlalchemy import models
+from oslo.config import cfg
+
+
+CONF = cfg.CONF
 
 
 def load_configuration():
@@ -42,8 +41,9 @@ def load_configuration():
                 attrs_missing.append(required_attr)
 
         if attrs_missing:
-            print ('Required attributes %s missing from %s'
-                   %(', '.join(attrs_missing), name))
+            if CONF.debug:
+                print ('Required attributes %s missing from %s'
+                       % (', '.join(attrs_missing), name))
             continue
 
         configs[obj.__tablename__] = obj.__confidential__
@@ -51,5 +51,6 @@ def load_configuration():
     return configs
 
 
-if __name__ == '__main__':
+def main():
+    CONF(sys.argv[1:], project='fuzzy-happiness')
     print load_configuration()

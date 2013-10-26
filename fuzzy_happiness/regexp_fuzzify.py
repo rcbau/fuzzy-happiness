@@ -25,9 +25,17 @@
 #    types :)
 #
 
-import sys
-import re
+import os
 import randomise
+import re
+import sys
+
+from oslo.config import cfg
+
+import attributes
+
+
+CONF = cfg.CONF
 
 
 #
@@ -52,39 +60,14 @@ _re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`'
 _re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))'
                            r'(\((?P<typesize>([1-9]?[0-9]+))\))?')
 
-#
-# Static definition of which data fields should be anonymised
-# Note(mrda): TODO: Need to build this programatically from the parsed
-# docstrings.  See https://github.com/mikalstill/nova/blob/anonymise/nova/db/
-#                  sqlalchemy/models.py
-# as an example
-#
-## <<< START TEST DATA >>>
-#
+_anon_fields = {}
+
 # Note(mrda): TODO: Need to test:
 #   'bigint' type anonymisation
 #
-_anon_fields = {}
-_anon_fields['compute_nodes'] = {}
-_anon_fields['instance_types'] = {}
-_anon_fields['fixed_ips'] = {}
-_anon_fields['certificates'] = {}
-_anon_fields['instance_actions_events'] = {}
-# Testing int, bigint, tinyint
-_anon_fields['compute_nodes']['vcpus'] = {"type": "int(11)"}
-_anon_fields['fixed_ips']['allocated'] = {"type": "tinyint(1)"}
-# Testing mediumtext, varchar, text
-_anon_fields['compute_nodes']['cpu_info'] = {"type": "mediumtext"}
-# TODO: certificates:user_id is actually a hex string and needs quoting.
-#       This should be handled.
-_anon_fields['certificates']['user_id'] = {"type": "hexstring"}
-_anon_fields['instance_actions_events']['traceback'] = {"type": "text"}
-# Testing float
-_anon_fields['instance_types']['rxtx_factor'] = {"type": "float"}
-## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
-DEBUG = False
+
 
 # Note(mrda): These globals should be passed around rather than referenced
 #             globally
@@ -112,7 +95,7 @@ def process_line(line):
     m = _re_create_table.search(line)
     if m:
         _current_table_name = m.group("table_name")
-        if _current_table_index not in _schema.keys():
+        if _current_table_index not in _schema:
             _schema[_current_table_name] = {}
         return line
 
@@ -129,7 +112,7 @@ def process_line(line):
             _schema[_current_table_name][_current_table_index] = \
                 {'name': m.group("index_name"),
                  'type': m.group("index_type")}
-            if m.group("index_type") not in _type_table.keys():
+            if m.group("index_type") not in _type_table:
                 _type_table[m.group("index_type")] = 0
             else:
                 _type_table[m.group("index_type")] += 1
@@ -174,7 +157,7 @@ def _parse_insert_data(table, values, line):
 def _anonymise(line, table_index, table):
     """ Anonymise the supplied line if this table needs anonymising """
     # Need to find if any columns from table need anonymising
-    if table in _anon_fields.keys():
+    if table in _anon_fields:
         # we have anonymising to do!
         row_elems = re.split(',', line)
 
@@ -200,7 +183,7 @@ def _dump_stats(filename):
     # Traverse the _schema
     print "Table Statistics"
     for table in _schema:
-        print ("Table `" + table + "` has " + str(len(_schema[table].keys())) +
+        print ("Table `" + table + "` has " + str(len(_schema[table])) +
                " rows.")
     # Print the type table
     print "\nTypes found in SQL Schema"
@@ -230,16 +213,38 @@ def _transmogrify(string, strtype):
     return randomised
 
 
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print "Usage: " + sys.argv[0] + " <filename>"
-        print ("Anonymises the SQL found in <filename>, writing output to "
-               "<filename>.output")
-    else:
-        with open(sys.argv[1], 'r') as r:
-            output_filename = sys.argv[1] + ".output"
-            with open(output_filename, 'w') as w:
-                for line in r:
-                    w.write(process_line(line))
-        if DEBUG:
-            _dump_stats(sys.argv[1])
+filename_opt = cfg.StrOpt('filename',
+                          default=None,
+                          help='The filename to process',
+                          positional=True)
+
+
+def main():
+    CONF.register_cli_opt(filename_opt)
+    CONF(sys.argv[1:], project='fuzzy-happiness')
+
+    if not CONF.filename:
+        print 'Please specify a filename to process'
+        return 1
+
+    # Load attributes from models.py
+    _anon_fields = attributes.load_configuration()
+
+    print 'Processing %s' % CONF.filename
+    if not os.path.exists(CONF.filename):
+        print 'Input file %s does not exist!' % CONF.filename
+        return 1
+    if not os.path.isfile(CONF.filename):
+        print 'Input %s is not a file!' % CONF.filename
+        return 1
+
+    with open(CONF.filename, 'r') as r:
+        output_filename = CONF.filename + ".output"
+        with open(output_filename, 'w') as w:
+            for line in r:
+                w.write(process_line(line))
+
+    if CONF.debug:
+        _dump_stats(CONF.filename)
+
+    return 0

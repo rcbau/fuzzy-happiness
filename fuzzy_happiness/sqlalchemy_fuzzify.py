@@ -90,7 +90,7 @@ def fuzzify(engine, config):
     cascade_fkeys(metadata, restore=True)
 
 
-if __name__ == '__main__':
+def main():
     # Import the database to modify
     #os.system('mysql -u root nova_fuzzy < nova.sql')
 
