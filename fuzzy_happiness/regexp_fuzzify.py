@@ -29,6 +29,7 @@ import os
 import randomise
 import re
 import sys
+import uuid
 
 from oslo.config import cfg
 
@@ -203,20 +204,8 @@ class Fuzzer(object):
                         row_elems[idx - 1], self.schema[table][idx]['type'])
         return ",".join(row_elems)
 
-    def dump_stats(self, filename):
-        print "\nStatistics for file `" + filename + "`\n"
-        # Traverse the self.schema
-        print "Table Statistics"
-        for table in self.schema:
-            print ("Table `" + table + "` has " +
-                   str(len(self.schema[table])) + " rows.")
-        # Print the type table
-        print "\nTypes found in SQL Schema"
-        for key in self.type_table:
-            print key, "appears", self.type_table[key], "times"
-
     def _transmogrify(self, string, strtype):
-        """ Anonymise the provide string, based upon it's strtype """
+        """ Anonymise the provided string, based upon it's strtype """
         # Note(mrda): TODO: handle mapping
         # Note(mrda): TODO: handle JSON and other embedded rich data
         #                   structures (if reqd)
@@ -239,6 +228,18 @@ class Fuzzer(object):
         if need_single_quotes:
             randomised = "'" + randomised + "'"
         return randomised
+
+    def dump_stats(self, filename):
+        print "\nStatistics for file `" + filename + "`\n"
+        # Traverse the self.schema
+        print "Table Statistics"
+        for table in self.schema:
+            print ("Table `" + table + "` has " +
+                   str(len(self.schema[table])) + " rows.")
+        # Print the type table
+        print "\nTypes found in SQL Schema"
+        for key in self.type_table:
+            print key, "appears", self.type_table[key], "times"
 
 
 filename_opt = cfg.StrOpt('filename',
