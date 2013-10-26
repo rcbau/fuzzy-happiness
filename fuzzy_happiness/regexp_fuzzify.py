@@ -60,36 +60,11 @@ _re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`'
 _re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))'
                            r'(\((?P<typesize>([1-9]?[0-9]+))\))?')
 
-#
-# Static definition of which data fields should be anonymised
-# Note(mrda): TODO: Need to build this programatically from the parsed
-# docstrings.  See https://github.com/mikalstill/nova/blob/anonymise/nova/db/
-#                  sqlalchemy/models.py
-# as an example
-#
-## <<< START TEST DATA >>>
-#
+_anon_fields = {}
+
 # Note(mrda): TODO: Need to test:
 #   'bigint' type anonymisation
 #
-_anon_fields = {}
-_anon_fields['compute_nodes'] = {}
-_anon_fields['instance_types'] = {}
-_anon_fields['fixed_ips'] = {}
-_anon_fields['certificates'] = {}
-_anon_fields['instance_actions_events'] = {}
-# Testing int, bigint, tinyint
-_anon_fields['compute_nodes']['vcpus'] = {"type": "int(11)"}
-_anon_fields['fixed_ips']['allocated'] = {"type": "tinyint(1)"}
-# Testing mediumtext, varchar, text
-_anon_fields['compute_nodes']['cpu_info'] = {"type": "mediumtext"}
-# TODO: certificates:user_id is actually a hex string and needs quoting.
-#       This should be handled.
-_anon_fields['certificates']['user_id'] = {"type": "hexstring"}
-_anon_fields['instance_actions_events']['traceback'] = {"type": "text"}
-# Testing float
-_anon_fields['instance_types']['rxtx_factor'] = {"type": "float"}
-## <<< END TEST DATA >>>
 
 _UNDEF = "UNDEFINED"
 
@@ -193,7 +168,7 @@ def _anonymise(line, table_index, table):
                 if _schema[table][idx]['name'] == field_key:
                     # Anonymise
                     row_elems[idx] = _transmogrify(row_elems[idx],
-                                                   _schema[table][idx]['type'])
+                                                   _schema[table][idx])
         return ",".join(row_elems)
     else:
         # Give back the line unadultered, no anonymising for this table
@@ -251,6 +226,9 @@ def main():
     if not CONF.filename:
         print 'Please specify a filename to process'
         return 1
+
+    # Load attributes from models.py
+    _anon_fields = attributes.load_configuration()
 
     print 'Processing %s' % CONF.filename
     if not os.path.exists(CONF.filename):
