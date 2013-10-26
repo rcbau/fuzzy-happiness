@@ -158,22 +158,20 @@ class Fuzzer(object):
     def _anonymise(self, line, table_index, table):
         """ Anonymise the supplied line if this table needs anonymising """
         # Need to find if any columns from table need anonymising
-        if table in self.anon_fields:
-            # we have anonymising to do!
-            row_elems = re.split(',', line)
-
-            for field_key in self.anon_fields[table]:
-                # Find the indexes we're interested in
-                # i.e. where is this field?
-                for idx in self.schema[table]:
-                    if self.schema[table][idx]['name'] == field_key:
-                        # Anonymise
-                        row_elems[idx] = self._transmogrify(
-                            row_elems[idx], self.schema[table][idx]['type'])
-            return ",".join(row_elems)
-        else:
-            # Give back the line unadultered, no anonymising for this table
+        if not table in self.anon_fields:
             return line
+
+        row_elems = re.split(',', line)
+
+        for field_key in self.anon_fields[table]:
+            # Find the indexes we're interested in
+            # i.e. where is this field?
+            for idx in self.schema[table]:
+                if self.schema[table][idx]['name'] == field_key:
+                    # Anonymise
+                    row_elems[idx] = self._transmogrify(
+                        row_elems[idx], self.schema[table][idx]['type'])
+        return ",".join(row_elems)
 
     def dump_stats(self, filename):
         print "\nStatistics for file `" + filename + "`\n"
