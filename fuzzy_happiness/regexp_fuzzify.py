@@ -135,7 +135,6 @@ class Fuzzer(object):
                 for idx in self.schema[self.cur_table_name]:
                     col_name = self.schema[self.cur_table_name][idx]['name']
                     config = self.anon_fields.get(self.cur_table_name, {})
-
                     anon_type = config.get(col_name)
                     anon_str = ''
                     if anon_type:
@@ -199,20 +198,24 @@ class Fuzzer(object):
             # i.e. where is this field?
             for idx in self.schema[table]:
                 if self.schema[table][idx]['name'] == field_key:
-                    # Anonymise
+                    col_name = self.schema[table][idx]['name']
+                    config = self.anon_fields.get(table, {})
+                    anon_type = config.get(col_name)
                     row_elems[idx - 1] = self._transmogrify(
-                        row_elems[idx - 1], self.schema[table][idx]['type'])
+                        row_elems[idx - 1], self.schema[table][idx]['type'],
+                        anon_type)
         return ",".join(row_elems)
 
-    def _transmogrify(self, string, strtype):
-        """ Anonymise the provided string, based upon it's strtype """
+    def _transmogrify(self, string, coltype, anontype):
+        """ Anonymise the provided string, based upon it's type """
         # Note(mrda): TODO: handle mapping
         # Note(mrda): TODO: handle JSON and other embedded rich data
         #                   structures (if reqd)
 
         if CONF.debug:
-            print ('    ....transmogrifying string "%s" of type %s'
-                   %(string, strtype))
+            print ('    ....transmogrifying value "%s" of type %s, anon type '
+                   '%s'
+                   %(string, coltype, anontype))
 
         # Handle quoted strings
         need_single_quotes = False
@@ -220,8 +223,26 @@ class Fuzzer(object):
             need_single_quotes = True
             string = string[1:-1]
 
-        typeinfo = strtype
-        m = _re_sql_types.search(strtype)
+        # Some anonymizations are more complicated than a simple string
+        # randomization
+        if anontype == 'uuid':
+            newval = "'fake%s'" % str(uuid.uuid4())[5:]
+            return newval
+
+        # TODO(mikal): The following types are not yet implemented here:
+        #     datetime
+        #     ec2_id
+        #     hostname
+        #     integer
+        #     ip_addesss_v6
+        #     ip_address
+        #     ip_address_v4
+        #     ip_address_v6
+        #     key_name
+
+        # Fallback to simple randomization
+        typeinfo = coltype
+        m = _re_sql_types.search(coltype)
         if m:
             typeinfo = m.group('typename')
         randomised = randomise.randomness(string, typeinfo)
