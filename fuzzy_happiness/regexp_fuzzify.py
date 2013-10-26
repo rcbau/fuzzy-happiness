@@ -181,8 +181,9 @@ class Fuzzer(object):
                 elem = elem[:-1]
             anon_elems.append(self._anonymise(elem, i, table))
             i += 1
-        anonymised_str = '),('.join(anon_elems)
-        return 'INSERT INTO `' + table + '` VALUES (' + anonymised_str + ');\n'
+        anonymised_str = '),\n    ('.join(anon_elems)
+        return ('INSERT INTO `' + table + '` VALUES \n    (' +
+                anonymised_str + ');\n')
 
     def _anonymise(self, line, table_index, table):
         """ Anonymise the supplied line if this table needs anonymising """
