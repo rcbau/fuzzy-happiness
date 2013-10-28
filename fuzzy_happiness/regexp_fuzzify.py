@@ -29,6 +29,7 @@ import os
 import randomise
 import re
 import sys
+import uuid
 
 from oslo.config import cfg
 
@@ -36,6 +37,14 @@ import attributes
 
 
 CONF = cfg.CONF
+
+opts = [
+    cfg.BoolOpt('add_descriptive_comments',
+                default=True,
+                help=('Add comments to output describing what we did to a '
+                      'given table.'))
+]
+CONF.register_opts(opts)
 
 
 #
@@ -121,10 +130,30 @@ class Fuzzer(object):
         # Find the end of tables
         m = _re_end_create_table.match(line)
         if self.cur_table_name != _UNDEF and m:
+            additional = []
+            if CONF.add_descriptive_comments:
+                for idx in self.schema[self.cur_table_name]:
+                    col_name = self.schema[self.cur_table_name][idx]['name']
+                    config = self.anon_fields.get(self.cur_table_name, {})
+                    anon_type = config.get(col_name)
+                    anon_str = ''
+                    if anon_type:
+                        anon_str = ' (anonymized as %s)' % anon_type
+                    
+                    additional.append(
+                        '/* Fuzzy happiness field %s named %s is %s%s */'
+                        %(idx, col_name,
+                          self.schema[self.cur_table_name][idx]['type'],
+                          anon_str))
+
             self.cur_table_name = _UNDEF
             self.cur_table_index = 0
             if CONF.debug:
                 print '    ...end of table definition'
+
+            if additional:
+                line += '\n%s\n\n' % '\n'.join(additional)
+
             return line
 
         # Insert statements.  You will never find a more wretched hive
@@ -152,28 +181,74 @@ class Fuzzer(object):
                 elem = elem[:-1]
             anon_elems.append(self._anonymise(elem, i, table))
             i += 1
-        anonymised_str = '),('.join(anon_elems)
-        return 'INSERT INTO `' + table + '` VALUES (' + anonymised_str + ');\n'
+        anonymised_str = '),\n    ('.join(anon_elems)
+        return ('INSERT INTO `' + table + '` VALUES \n    (' +
+                anonymised_str + ');\n')
 
     def _anonymise(self, line, table_index, table):
         """ Anonymise the supplied line if this table needs anonymising """
         # Need to find if any columns from table need anonymising
-        if table in self.anon_fields:
-            # we have anonymising to do!
-            row_elems = re.split(',', line)
-
-            for field_key in self.anon_fields[table]:
-                # Find the indexes we're interested in
-                # i.e. where is this field?
-                for idx in self.schema[table]:
-                    if self.schema[table][idx]['name'] == field_key:
-                        # Anonymise
-                        row_elems[idx] = self._transmogrify(
-                            row_elems[idx], self.schema[table][idx]['type'])
-            return ",".join(row_elems)
-        else:
-            # Give back the line unadultered, no anonymising for this table
+        if not table in self.anon_fields:
             return line
+
+        row_elems = re.split(',', line)
+
+        for field_key in self.anon_fields[table]:
+            # Find the indexes we're interested in
+            # i.e. where is this field?
+            for idx in self.schema[table]:
+                if self.schema[table][idx]['name'] == field_key:
+                    col_name = self.schema[table][idx]['name']
+                    config = self.anon_fields.get(table, {})
+                    anon_type = config.get(col_name)
+                    row_elems[idx - 1] = self._transmogrify(
+                        row_elems[idx - 1], self.schema[table][idx]['type'],
+                        anon_type)
+        return ",".join(row_elems)
+
+    def _transmogrify(self, string, coltype, anontype):
+        """ Anonymise the provided string, based upon it's type """
+        # Note(mrda): TODO: handle mapping
+        # Note(mrda): TODO: handle JSON and other embedded rich data
+        #                   structures (if reqd)
+
+        if CONF.debug:
+            print ('    ....transmogrifying value "%s" of type %s, anon type '
+                   '%s'
+                   %(string, coltype, anontype))
+
+        # Handle quoted strings
+        need_single_quotes = False
+        if string[0] == "'" and string[-1] == "'":
+            need_single_quotes = True
+            string = string[1:-1]
+
+        # Some anonymizations are more complicated than a simple string
+        # randomization
+        if anontype == 'uuid':
+            newval = "'fake%s'" % str(uuid.uuid4())[5:]
+            return newval
+
+        # TODO(mikal): The following types are not yet implemented here:
+        #     datetime
+        #     ec2_id
+        #     hostname
+        #     integer
+        #     ip_addesss_v6
+        #     ip_address
+        #     ip_address_v4
+        #     ip_address_v6
+        #     key_name
+
+        # Fallback to simple randomization
+        typeinfo = coltype
+        m = _re_sql_types.search(coltype)
+        if m:
+            typeinfo = m.group('typename')
+        randomised = randomise.randomness(string, typeinfo)
+        if need_single_quotes:
+            randomised = "'" + randomised + "'"
+        return randomised
 
     def dump_stats(self, filename):
         print "\nStatistics for file `" + filename + "`\n"
@@ -186,31 +261,6 @@ class Fuzzer(object):
         print "\nTypes found in SQL Schema"
         for key in self.type_table:
             print key, "appears", self.type_table[key], "times"
-
-    def _transmogrify(self, string, strtype):
-        """ Anonymise the provide string, based upon it's strtype """
-        # Note(mrda): TODO: handle mapping
-        # Note(mrda): TODO: handle JSON and other embedded rich data
-        #                   structures (if reqd)
-
-        if CONF.debug:
-            print ('    ....transmogrifying string "%s" of type %s'
-                   %(string, strtype))
-
-        # Handle quoted strings
-        need_single_quotes = False
-        if string[0] == "'" and string[-1] == "'":
-            need_single_quotes = True
-            string = string[1:-1]
-
-        typeinfo = strtype
-        m = _re_sql_types.search(strtype)
-        if m:
-            typeinfo = m.group('typename')
-        randomised = randomise.randomness(string, typeinfo)
-        if need_single_quotes:
-            randomised = "'" + randomised + "'"
-        return randomised
 
 
 filename_opt = cfg.StrOpt('filename',
