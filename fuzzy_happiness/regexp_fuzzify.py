@@ -60,8 +60,6 @@ _re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`'
 _re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))'
                            r'(\((?P<typesize>([1-9]?[0-9]+))\))?')
 
-_anon_fields = {}
-
 # Note(mrda): TODO: Need to test:
 #   'bigint' type anonymisation
 #
@@ -69,148 +67,150 @@ _anon_fields = {}
 _UNDEF = "UNDEFINED"
 
 
-# Note(mrda): These globals should be passed around rather than referenced
-#             globally
-_current_table_name = _UNDEF
-_current_table_index = 0
-_schema = {}
-_type_table = {}
+class Fuzzer(object):
+    def __init__(self, anon_fields):
+        self.anon_fields = anon_fields
+        self.cur_table_name = _UNDEF
+        self.cur_table_index = 0
+        self.schema = {}
+        self.type_table = {}
 
+    def process_line(self, line):
+        """ Process each line in a mini state machine """
 
-def process_line(line):
-    """ Process each line in a mini state machine """
-
-    # Oh, the shame
-    global _current_table_name
-    global _current_table_index
-    global _schema
-    global _type_table
-
-    # Skip comments and blanks and things I don't care about
-    if _re_blanks.match(line) or _re_comments.match(line) or \
-        _re_sql_I_dont_care_about.match(line):
+        # Skip comments and blanks and things I don't care about
+        if (_re_blanks.match(line) or _re_comments.match(line) or
+            _re_sql_I_dont_care_about.match(line)):
+            if CONF.debug:
+                print '    ...unimportant line'
             return line
 
-    # Find tables to build indexes
-    m = _re_create_table.search(line)
-    if m:
-        _current_table_name = m.group("table_name")
-        if _current_table_index not in _schema:
-            _schema[_current_table_name] = {}
-        return line
-
-    # Once we're in a table definition, get the row definitions
-    if _current_table_name != _UNDEF:
-
-        # Skip table defns I don't care about
-        if _re_unneeded_table_sql.match(line):
-            return line
-
-        m = _re_table_index.search(line)
+        # Find tables to build indexes
+        m = _re_create_table.search(line)
         if m:
-            _current_table_index += 1
-            _schema[_current_table_name][_current_table_index] = \
-                {'name': m.group("index_name"),
-                 'type': m.group("index_type")}
-            if m.group("index_type") not in _type_table:
-                _type_table[m.group("index_type")] = 0
-            else:
-                _type_table[m.group("index_type")] += 1
-
+            self.cur_table_name = m.group("table_name")
+            if self.cur_table_index not in self.schema:
+                self.schema[self.cur_table_name] = {}
+            if CONF.debug:
+                print '    ...table definition starts'
             return line
 
-    # Find the end of tables
-    m = _re_end_create_table.match(line)
-    if _current_table_name != _UNDEF and m:
-        _current_table_name = _UNDEF
-        _current_table_index = 0
-        return line
+        # Once we're in a table definition, get the row definitions
+        if self.cur_table_name != _UNDEF:
+            # Skip table defns I don't care about
+            if _re_unneeded_table_sql.match(line):
+                if CONF.debug:
+                    print '    ...non-column table definition'
+                return line
 
-    # Insert statements.  You will never find a more wretched hive
-    # of scum and villainy.
-    #
-    # Also where the data is that needs anonymising is
-    m = _re_insert.search(line)
-    if m:
-        return _parse_insert_data(m.group("table_name"),
-                                  m.group("insert_values"),
-                                  line)
+            m = _re_table_index.search(line)
+            if m:
+                self.cur_table_index += 1
+                self.schema[self.cur_table_name][self.cur_table_index] = \
+                    {'name': m.group("index_name"),
+                     'type': m.group("index_type")}
 
+                self.type_table.setdefault(m.group("index_type"), 0)
+                self.type_table[m.group("index_type")] += 1
 
-def _parse_insert_data(table, values, line):
-    """ Parse INSERT values, anonymising where required """
-    elems = re.split('\),\(', values)
-    i = 0
-    anon_elems = []
+                if CONF.debug:
+                    print '    ...schema: %s = %s' % (m.group("index_name"),
+                                                      m.group("index_type"))
+                return line
 
-    for elem in elems:
-        if elem[0] == '(':
-            elem = elem[1:]
-        if elem[-1] == ')':
-            elem = elem[:-1]
-        anon_elems.append(_anonymise(elem, i, table))
-        i += 1
-    anonymised_str = '),('.join(anon_elems)
-    return 'INSERT INTO `' + table + '` VALUES (' + anonymised_str + ');\n'
+        # Find the end of tables
+        m = _re_end_create_table.match(line)
+        if self.cur_table_name != _UNDEF and m:
+            self.cur_table_name = _UNDEF
+            self.cur_table_index = 0
+            if CONF.debug:
+                print '    ...end of table definition'
+            return line
 
+        # Insert statements.  You will never find a more wretched hive
+        # of scum and villainy.
+        #
+        # Also where the data is that needs anonymising is
+        m = _re_insert.search(line)
+        if m:
+            if CONF.debug:
+                print '    ...data bearing line'
+            return self._parse_insert_data(m.group("table_name"),
+                                           m.group("insert_values"),
+                                           line)
 
-def _anonymise(line, table_index, table):
-    """ Anonymise the supplied line if this table needs anonymising """
-    # Need to find if any columns from table need anonymising
-    if table in _anon_fields:
-        # we have anonymising to do!
-        row_elems = re.split(',', line)
+    def _parse_insert_data(self, table, values, line):
+        """ Parse INSERT values, anonymising where required """
+        elems = re.split('\),\(', values)
+        i = 0
+        anon_elems = []
 
-        for field_key in _anon_fields[table]:
-            # Find the indexes we're interested in
-            # i.e. where is this field?
-            for idx in _schema[table]:
-                if _schema[table][idx]['name'] == field_key:
-                    # Anonymise
-                    row_elems[idx] = _transmogrify(row_elems[idx],
-                                                   _schema[table][idx]['type'])
-        return ",".join(row_elems)
-    else:
-        # Give back the line unadultered, no anonymising for this table
-        return line
+        for elem in elems:
+            if elem[0] == '(':
+                elem = elem[1:]
+            if elem[-1] == ')':
+                elem = elem[:-1]
+            anon_elems.append(self._anonymise(elem, i, table))
+            i += 1
+        anonymised_str = '),('.join(anon_elems)
+        return 'INSERT INTO `' + table + '` VALUES (' + anonymised_str + ');\n'
 
+    def _anonymise(self, line, table_index, table):
+        """ Anonymise the supplied line if this table needs anonymising """
+        # Need to find if any columns from table need anonymising
+        if table in self.anon_fields:
+            # we have anonymising to do!
+            row_elems = re.split(',', line)
 
-def _dump_stats(filename):
-    global _schema
-    global _type_table
+            for field_key in self.anon_fields[table]:
+                # Find the indexes we're interested in
+                # i.e. where is this field?
+                for idx in self.schema[table]:
+                    if self.schema[table][idx]['name'] == field_key:
+                        # Anonymise
+                        row_elems[idx] = self._transmogrify(
+                            row_elems[idx], self.schema[table][idx]['type'])
+            return ",".join(row_elems)
+        else:
+            # Give back the line unadultered, no anonymising for this table
+            return line
 
-    print "\nStatistics for file `" + filename + "`\n"
-    # Traverse the _schema
-    print "Table Statistics"
-    for table in _schema:
-        print ("Table `" + table + "` has " + str(len(_schema[table])) +
-               " rows.")
-    # Print the type table
-    print "\nTypes found in SQL Schema"
-    for key in _type_table:
-        print key, "appears", _type_table[key], "times"
+    def dump_stats(self, filename):
+        print "\nStatistics for file `" + filename + "`\n"
+        # Traverse the self.schema
+        print "Table Statistics"
+        for table in self.schema:
+            print ("Table `" + table + "` has " +
+                   str(len(self.schema[table])) + " rows.")
+        # Print the type table
+        print "\nTypes found in SQL Schema"
+        for key in self.type_table:
+            print key, "appears", self.type_table[key], "times"
 
+    def _transmogrify(self, string, strtype):
+        """ Anonymise the provide string, based upon it's strtype """
+        # Note(mrda): TODO: handle mapping
+        # Note(mrda): TODO: handle JSON and other embedded rich data
+        #                   structures (if reqd)
 
-def _transmogrify(string, strtype):
-    """ Anonymise the provide string, based upon it's strtype """
-    # Note(mrda): TODO: handle mapping
-    # Note(mrda): TODO: handle JSON and other embedded rich data structures (if
-    #                   reqd)
+        if CONF.debug:
+            print ('    ....transmogrifying string "%s" of type %s'
+                   %(string, strtype))
 
-    # Handle quoted strings
-    need_single_quotes = False
-    if string[0] == "'" and string[-1] == "'":
-        need_single_quotes = True
-        string = string[1:-1]
+        # Handle quoted strings
+        need_single_quotes = False
+        if string[0] == "'" and string[-1] == "'":
+            need_single_quotes = True
+            string = string[1:-1]
 
-    typeinfo = strtype
-    m = _re_sql_types.search(strtype)
-    if m:
-        typeinfo = m.group('typename')
-    randomised = randomise.randomness(string, typeinfo)
-    if need_single_quotes:
-        randomised = "'" + randomised + "'"
-    return randomised
+        typeinfo = strtype
+        m = _re_sql_types.search(strtype)
+        if m:
+            typeinfo = m.group('typename')
+        randomised = randomise.randomness(string, typeinfo)
+        if need_single_quotes:
+            randomised = "'" + randomised + "'"
+        return randomised
 
 
 filename_opt = cfg.StrOpt('filename',
@@ -227,9 +227,6 @@ def main():
         print 'Please specify a filename to process'
         return 1
 
-    # Load attributes from models.py
-    _anon_fields = attributes.load_configuration()
-
     print 'Processing %s' % CONF.filename
     if not os.path.exists(CONF.filename):
         print 'Input file %s does not exist!' % CONF.filename
@@ -238,13 +235,21 @@ def main():
         print 'Input %s is not a file!' % CONF.filename
         return 1
 
+    # Load attributes from models.py
+    anon_fields = attributes.load_configuration()
+    fuzz = Fuzzer(anon_fields)
+
     with open(CONF.filename, 'r') as r:
         output_filename = CONF.filename + ".output"
         with open(output_filename, 'w') as w:
             for line in r:
-                w.write(process_line(line))
+                processed = fuzz.process_line(line)
+                if CONF.debug:
+                    print '>>> %s' % line.rstrip()
+                    print '<<< %s' % processed.rstrip()
+                w.write(processed)
 
     if CONF.debug:
-        _dump_stats(CONF.filename)
+        fuzz.dump_stats(CONF.filename)
 
     return 0
