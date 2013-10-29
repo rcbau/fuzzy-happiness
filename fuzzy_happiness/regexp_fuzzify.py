@@ -139,12 +139,12 @@ class Fuzzer(object):
                     anon_str = ''
                     if anon_type:
                         anon_str = ' (anonymized as %s)' % anon_type
-                    
+
                     additional.append(
                         '/* Fuzzy happiness field %s named %s is %s%s */'
-                        %(idx, col_name,
-                          self.schema[self.cur_table_name][idx]['type'],
-                          anon_str))
+                        % (idx, col_name,
+                           self.schema[self.cur_table_name][idx]['type'],
+                           anon_str))
 
             self.cur_table_name = _UNDEF
             self.cur_table_index = 0
@@ -215,7 +215,7 @@ class Fuzzer(object):
         if CONF.debug:
             print ('    ....transmogrifying value "%s" of type %s, anon type '
                    '%s'
-                   %(string, coltype, anontype))
+                   % (string, coltype, anontype))
 
         # Handle quoted strings
         need_single_quotes = False
