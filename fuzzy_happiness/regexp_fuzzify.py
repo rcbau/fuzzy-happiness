@@ -25,6 +25,7 @@
 #    types :)
 #
 
+import CSVParser
 import os
 import randomise
 import re
@@ -139,12 +140,12 @@ class Fuzzer(object):
                     anon_str = ''
                     if anon_type:
                         anon_str = ' (anonymized as %s)' % anon_type
-                    
+
                     additional.append(
                         '/* Fuzzy happiness field %s named %s is %s%s */'
-                        %(idx, col_name,
-                          self.schema[self.cur_table_name][idx]['type'],
-                          anon_str))
+                        % (idx, col_name,
+                           self.schema[self.cur_table_name][idx]['type'],
+                           anon_str))
 
             self.cur_table_name = _UNDEF
             self.cur_table_index = 0
@@ -170,28 +171,41 @@ class Fuzzer(object):
 
     def _parse_insert_data(self, table, values, line):
         """ Parse INSERT values, anonymising where required """
-        elems = re.split('\),\(', values)
-        i = 0
+
         anon_elems = []
 
+        # Multiple rows of the database can be in each INSERT statement
+        elems = re.split('\),\(', values)
+
+        i = 0
         for elem in elems:
             if elem[0] == '(':
                 elem = elem[1:]
             if elem[-1] == ')':
                 elem = elem[:-1]
-            anon_elems.append(self._anonymise(elem, i, table))
+
+            # Each elem is an insert statement across a row
+            # of the schema.  Process these rows independently
+            anon_elems.append(self._parse_insert_row_data(table, elem, line))
+
             i += 1
+
         anonymised_str = '),\n    ('.join(anon_elems)
         return ('INSERT INTO `' + table + '` VALUES \n    (' +
                 anonymised_str + ');\n')
 
-    def _anonymise(self, line, table_index, table):
-        """ Anonymise the supplied line if this table needs anonymising """
+    def _parse_insert_row_data(self, table, str, line):
+        """ Parse a single row of a database table from an INSERT statement,
+            anonymising data where required """
+        csv = CSVParser.CSVParser()
+        elems = csv.parse(str)
+        return self._anonymise(elems, table, line)
+
+    def _anonymise(self, fields, table, line):
+        """ Anonymise the supplied fields if this table needs anonymising """
         # Need to find if any columns from table need anonymising
         if not table in self.anon_fields:
-            return line
-
-        row_elems = re.split(',', line)
+            return ",".join(fields)
 
         for field_key in self.anon_fields[table]:
             # Find the indexes we're interested in
@@ -201,21 +215,19 @@ class Fuzzer(object):
                     col_name = self.schema[table][idx]['name']
                     config = self.anon_fields.get(table, {})
                     anon_type = config.get(col_name)
-                    row_elems[idx - 1] = self._transmogrify(
-                        row_elems[idx - 1], self.schema[table][idx]['type'],
+                    fields[idx] = self._transmogrify(
+                        fields[idx], self.schema[table][idx]['type'],
                         anon_type)
-        return ",".join(row_elems)
+        return ",".join(fields)
 
     def _transmogrify(self, string, coltype, anontype):
         """ Anonymise the provided string, based upon it's type """
         # Note(mrda): TODO: handle mapping
-        # Note(mrda): TODO: handle JSON and other embedded rich data
-        #                   structures (if reqd)
 
         if CONF.debug:
             print ('    ....transmogrifying value "%s" of type %s, anon type '
                    '%s'
-                   %(string, coltype, anontype))
+                   % (string, coltype, anontype))
 
         # Handle quoted strings
         need_single_quotes = False
