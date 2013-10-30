@@ -215,19 +215,14 @@ class Fuzzer(object):
                     col_name = self.schema[table][idx]['name']
                     config = self.anon_fields.get(table, {})
                     anon_type = config.get(col_name)
-                    fields[idx] = self._transmogrify(
-                        fields[idx], self.schema[table][idx]['type'],
+                    fields[idx - 1] = self._transmogrify(
+                        fields[idx - 1], self.schema[table][idx]['type'],
                         anon_type)
         return ",".join(fields)
 
     def _transmogrify(self, string, coltype, anontype):
         """ Anonymise the provided string, based upon it's type """
         # Note(mrda): TODO: handle mapping
-
-        if CONF.debug:
-            print ('    ....transmogrifying value "%s" of type %s, anon type '
-                   '%s'
-                   % (string, coltype, anontype))
 
         # Handle quoted strings
         need_single_quotes = False
@@ -258,8 +253,15 @@ class Fuzzer(object):
         if m:
             typeinfo = m.group('typename')
         randomised = randomise.randomness(string, typeinfo)
+
+        if CONF.debug:
+            print ('    ....transmogrifying from value "%s" to value "%s"'
+                   ' with type %s, anon type %s'
+                   % (string, randomised, coltype, anontype))
+
         if need_single_quotes:
             randomised = "'" + randomised + "'"
+
         return randomised
 
     def dump_stats(self, filename):
