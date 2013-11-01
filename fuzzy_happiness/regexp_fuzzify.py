@@ -66,14 +66,6 @@ _re_unneeded_table_sql = re.compile(r'^\s*((PRIMARY\sKEY)|(KEY)|(CONSTRAINT)|'
 _re_insert = re.compile(r'^\s*INSERT\sINTO\s`(?P<table_name>([A-Za-z_0-9]+))`'
                         r'\sVALUES\s(?P<insert_values>(.*));')
 
-# Regex to pull apart SQL types
-_re_sql_types = re.compile(r'^(?P<typename>([a-zA-Z]+))'
-                           r'(\((?P<typesize>([1-9]?[0-9]+))\))?')
-
-# Note(mrda): TODO: Need to test:
-#   'bigint' type anonymisation
-#
-
 _UNDEF = "UNDEFINED"
 
 
@@ -230,29 +222,7 @@ class Fuzzer(object):
             need_single_quotes = True
             string = string[1:-1]
 
-        # Some anonymizations are more complicated than a simple string
-        # randomization
-        if anontype == 'uuid':
-            newval = "'fake%s'" % str(uuid.uuid4())[5:]
-            return newval
-
-        # TODO(mikal): The following types are not yet implemented here:
-        #     datetime
-        #     ec2_id
-        #     hostname
-        #     integer
-        #     ip_addesss_v6
-        #     ip_address
-        #     ip_address_v4
-        #     ip_address_v6
-        #     key_name
-
-        # Fallback to simple randomization
-        typeinfo = coltype
-        m = _re_sql_types.search(coltype)
-        if m:
-            typeinfo = m.group('typename')
-        randomised = randomise.randomness(string, typeinfo)
+        randomised = randomise.randomness(string, anontype)
 
         if CONF.debug:
             print ('    ....transmogrifying from value "%s" to value "%s"'

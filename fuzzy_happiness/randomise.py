@@ -14,7 +14,7 @@
 
 import random
 import string as st
-
+import uuid
 
 _LOWERCASE_LETTERS = list(st.ascii_lowercase)
 _UPPERCASE_LETTERS = list(st.ascii_uppercase)
@@ -107,15 +107,42 @@ def random_ipaddress_replacement(string, padding_before=0, padding_after=0):
     return ".".join(candidates)
 
 
+def random_datetime_replacement(string):
+    """Randomise a datetime string"""
+    year = random.randint(1971, 2013)
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)  # cheat
+    hour = random.randint(0, 59)
+    minute = random.randint(0, 59)
+    second = random.randint(0, 59)
+    return ("%04d-%02d-%02d %02d:%02d:%02d" %
+           (year, month, day, hour, minute, second))
+
+
 def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
-    # Note(mrda): TODO: Need to support datetime
-    if column_type == 'ip_address_v4':
-        # Possibly need to make this smarter to keep subnet classes
+
+    # Special case randomisations
+    if old_value == 'NULL':
+        return old_value
+    if column_type == 'uuid':
+        new_uuid = "'fake%s'" % str(uuid.uuid4())[5:]
+        return new_uuid
+
+    # Note(mrda): TODO: The following types are not yet implemented here:
+    #     datetime
+    #     ec2_id
+    #     hostname
+    #     integer
+    #     ip_addesss_v6
+    #     key_name
+    if (column_type == 'ip_address_v4' or
+        column_type == 'ip_address'):
+        # Note(mikal): Possibly make this smarter to keep subnet classes
         return random_ipaddress_replacement(old_value)
     elif column_type == 'ip_address_v6':
-        # TODO: implement V6
+        # Note(mrda): TODO: implement V6
         return old_value
     elif column_type == 'hexstring':
         return random_str_replacement(old_value, keep_hexadecimal=True)
@@ -138,7 +165,6 @@ def randomness(old_value, column_type):
         return random_str_replacement(old_value,
                                       replacement_dictionary=replacement_dict)
     elif column_type == 'datetime':
-        # TODO: implement time schmeer
-        return old_value
+        return random_datetime_replacement(old_value)
     else:
         return random_str_replacement(old_value)
