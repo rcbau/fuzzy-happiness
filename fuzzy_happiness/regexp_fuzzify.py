@@ -30,7 +30,6 @@ import os
 import randomise
 import re
 import sys
-import uuid
 
 from oslo.config import cfg
 
