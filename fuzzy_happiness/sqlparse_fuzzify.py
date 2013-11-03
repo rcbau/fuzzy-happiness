@@ -1,14 +1,22 @@
 #!/usr/bin/python
 
 import datetime
+import re
 import sqlparse
 import sys
 
+#import attributes
+
+
+TABLE_NAME_RE = re.compile('CREATE TABLE `(.+)`')
+COLUMN_RE = re.compile('  `(.+)` ([^ ,]+).*')
+
 
 class DumpProcessor(object):
-    def __init__(self, input_path, output_path):
+    def __init__(self, input_path, output_path, anon_fields):
         self.input_path = input_path
         self.output_path = output_path
+        self.anon_fields = anon_fields
 
     def read_sql_dump(self):
         # Read blocks, separating by blank lines. Each block is parsed as a
@@ -60,6 +68,9 @@ class DumpProcessor(object):
             print 'PST %s' % post_insert
             sys.exit(1)
 
+        if create_statement:
+            table_name, columns = self.parse_create(create_statement)
+
         for insert in inserts:
             self.out.write(insert)
 
@@ -110,6 +121,7 @@ class DumpProcessor(object):
                         ignore_statement = True
                         continue
                     if token.value == 'CREATE':
+                        create_data.append(token.value)
                         create_statement = True
                         continue
 
@@ -121,8 +133,31 @@ class DumpProcessor(object):
 
         return ' '.join(create_data)
 
+    def parse_create(self, create_statement):
+        # sqlparse falls apart when you ask it to parse DDL. It thinks that
+        # the DDL statement is a function, and doesn't quite know what to do.
+        # So, we're going to revert to something more basic for creates.
+        table_name = None
+        columns = {}
+
+        for line in create_statement.split('\n'):
+            print line
+            m = TABLE_NAME_RE.match(line)
+            if m:
+                table_name = m.group(1)
+
+            m = COLUMN_RE.match(line)
+            if m:
+                columns[m.group(1)] = m.group(2)
+
+        return table_name, columns
+
 
 if __name__ == '__main__':
+    #anon_fields = attributes.load_configuration()
+
+    anon_fields = {}
     dp = DumpProcessor('/home/mikal/datasets/nova_user_001.sql',
-                       '/tmp/nova_user_001.sql.post')
+                       '/tmp/nova_user_001.sql.post',
+                       anon_fields)
     dp.read_sql_dump()
