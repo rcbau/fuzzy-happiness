@@ -19,8 +19,10 @@ class DumpProcessor(object):
         self.anon_fields = anon_fields
 
     def read_sql_dump(self):
-        # Read blocks, separating by blank lines. Each block is parsed as a
-        # group.
+        """Read a SQL dump file and process it."""
+
+        # Optimization -- read blocks, separating by blank lines. Each block
+        # is parsed as a group.
         with open(self.input_path) as f:
             with open(self.output_path, 'w') as self.out:
                 pre_insert = []
@@ -51,6 +53,8 @@ class DumpProcessor(object):
                                      ''.join(post_insert))
 
     def parse_block(self, pre_insert, inserts, post_insert):
+        """Parse one of these blocks that we've extracted."""
+
         # Special case empty tables
         if not inserts:
             self.out.write(pre_insert)
@@ -72,11 +76,13 @@ class DumpProcessor(object):
             table_name, columns = self.parse_create(create_statement)
 
         for insert in inserts:
-            self.out.write(insert)
+            self.handle_insert(table_name, columns, insert)
 
         self.out.write(post_insert)
 
     def extract_create(self, pre_insert):
+        """Extract the create statement from a block of SQL."""
+
         # This method is over engineered. If we're just looking for creates we
         # could just filter this more aggressively. However, I wanted to
         # understand what the other tokens were before I did that, and now I
@@ -134,23 +140,64 @@ class DumpProcessor(object):
         return ' '.join(create_data)
 
     def parse_create(self, create_statement):
+        """Parse a create statement.
+
+        Returns the name of the table and a list of tuples. Each tuple is
+        the name of the column and the type.
+        """
+
         # sqlparse falls apart when you ask it to parse DDL. It thinks that
         # the DDL statement is a function, and doesn't quite know what to do.
         # So, we're going to revert to something more basic for creates.
         table_name = None
-        columns = {}
+        columns = []
 
         for line in create_statement.split('\n'):
-            print line
             m = TABLE_NAME_RE.match(line)
             if m:
                 table_name = m.group(1)
 
             m = COLUMN_RE.match(line)
             if m:
-                columns[m.group(1)] = m.group(2)
+                columns.append((m.group(1), m.group(2)))
 
         return table_name, columns
+
+    def handle_insert(self, table_name, columns, insert):
+        """Parse an insert statement into its rows."""
+
+        for parse in sqlparse.parse(insert):
+            for token in parse.tokens:
+                if not isinstance(token, sqlparse.sql.Parenthesis):
+                    continue
+
+                row = []
+                for subtoken in token.tokens:
+                    if not isinstance(subtoken, sqlparse.sql.IdentifierList):
+                        continue
+
+                    for ident in subtoken.tokens:
+                        if str(ident.ttype) == 'Token.Punctuation':
+                            continue
+                        row.append(ident.value)
+
+                if row:
+                    self.anonymize_row(table_name, columns, row)
+
+    def anonymize_row(self, table_name, columns, row):
+        """Handle a single row."""
+
+        if len(columns) != len(row):
+            print 'Error: How did we end up with the wrong number of columns?'
+            sys.exit(1)
+
+        print table_name
+        counter = 0
+        for column in row:
+            print '    %s %s = %s' % (columns[counter][0],
+                                    columns[counter][1],
+                                    column)
+            counter += 1
 
 
 if __name__ == '__main__':
