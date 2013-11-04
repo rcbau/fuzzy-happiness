@@ -12,16 +12,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import testtools
+import json
 import string
 import random
 import re
+import testtools
 
 from fuzzy_happiness.randomise import random_char_replacement
 from fuzzy_happiness.randomise import random_hexstring_replacement
-from fuzzy_happiness.randomise import random_str_replacement
-from fuzzy_happiness.randomise import random_pathname_replacement
 from fuzzy_happiness.randomise import random_ipaddress_replacement
+from fuzzy_happiness.randomise import random_json_replacement
+from fuzzy_happiness.randomise import randomness
+from fuzzy_happiness.randomise import random_pathname_replacement
+from fuzzy_happiness.randomise import random_str_replacement
 
 
 class TestRandomCharReplacement(testtools.TestCase):
@@ -184,3 +187,55 @@ class TestRandomIPAddressReplacement(testtools.TestCase):
         new_addr = random_ipaddress_replacement('spam egg spam spam bacon '
                                                 'and spam')
         self.assertEqual(None, new_addr)
+
+
+class TestRandomJSONReplacement(testtools.TestCase):
+    def test_simple_json_dict(self):
+        input = ('{\"vendor\": \"Intel\", \"model\": \"n270\",'
+                 ' \"arch\": \"i686\"}')
+        anon = random_json_replacement(input)
+        orig_hash = json.loads(input)
+        anon_hash = json.loads(anon)
+        # Same number of elements?
+        self.assertEqual(len(input), len(anon))
+        # Keys all the same?
+        orig_keys = orig_hash.keys()
+        anon_keys = anon_hash.keys()
+        for key in orig_keys:
+            self.assertTrue(key in anon_keys)
+        # Values are all different
+        for key in orig_keys:
+            self.assertNotEqual(orig_hash[key], anon_hash[key])
+
+    def test_nested_json_dict(self):
+        input = '{\"vendor\": {\"eggs\": \"spam\", \"spam\": \"bacon\"}}'
+
+        anon = random_json_replacement(input)
+        orig_hash = json.loads(input)
+        anon_hash = json.loads(anon)
+        # Same number of elements?
+        self.assertEqual(len(input), len(anon))
+        # Keys all the same?
+        orig_keys = orig_hash.keys()
+        anon_keys = anon_hash.keys()
+        for key in orig_keys:
+            self.assertTrue(key in anon_keys)
+        # Values are all different
+        for key in orig_keys:
+            self.assertNotEqual(orig_hash[key], anon_hash[key])
+
+    def test_simple_json_randomness(self):
+        input = '{"eggs": "spam", "spam": "bacon"}'
+        anon = randomness(input, "string")
+        orig_hash = json.loads(input)
+        anon_hash = json.loads(anon)
+        # Same number of elements?
+        self.assertEqual(len(input), len(anon))
+        # Keys all the same?
+        orig_keys = orig_hash.keys()
+        anon_keys = anon_hash.keys()
+        for key in orig_keys:
+            self.assertTrue(key in anon_keys)
+        # Values are all different
+        for key in orig_keys:
+            self.assertNotEqual(orig_hash[key], anon_hash[key])
