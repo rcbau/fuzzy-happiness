@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import json
 import random
 import string as st
 import uuid
@@ -123,6 +124,26 @@ def random_datetime_replacement(string):
            (year, month, day, hour, minute, second))
 
 
+def random_json_replacement(string):
+    """Randomise a json string"""
+    if string[0] != '{':
+        # Not json
+        return random_str_replacement(string)
+
+    json_obj = json.loads(string)
+
+    # Note(mrda): Assuming a json dict, sorry
+    for key in json_obj:
+        if type(json_obj[key]) is dict:
+            # Nested json goodness
+            json_obj[key] = json.loads(
+                random_json_replacement(json.dumps(json_obj[key])))
+        else:
+            json_obj[key] = random_str_replacement(json_obj[key])
+
+    return json.dumps(json_obj)
+
+
 def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
@@ -169,5 +190,8 @@ def randomness(old_value, column_type):
                                       replacement_dictionary=replacement_dict)
     elif column_type == 'datetime':
         return random_datetime_replacement(old_value)
+    elif old_value[0] == '{':
+        # If it looks like json...
+        return random_json_replacement(old_value)
     else:
         return random_str_replacement(old_value)
