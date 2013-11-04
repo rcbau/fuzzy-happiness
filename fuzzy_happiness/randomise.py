@@ -100,8 +100,12 @@ def random_pathname_replacement(string, padding_before=0, padding_after=0):
 def random_ipaddress_replacement(string, padding_before=0, padding_after=0):
     """Randomise each character in a IP Address string"""
     # Note(mrda): TODO: Should be extended for IPv6 addresses
+    num_octets = len(string.split('.'))
+    if num_octets not in [2, 3, 4]:
+        # Not a valid IP Address
+        return None
     candidates = []
-    for i in range(4):
+    for i in range(num_octets):
         octet = str(random.randint(1, 254))
         candidates.append(octet)
     return ".".join(candidates)
