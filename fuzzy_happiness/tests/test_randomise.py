@@ -190,39 +190,30 @@ class TestRandomIPAddressReplacement(testtools.TestCase):
 
 
 class TestRandomJSONReplacement(testtools.TestCase):
+
+    def check_json(self, input):
+        anon = random_json_replacement(input)
+        orig_hash = json.loads(input)
+        anon_hash = json.loads(anon)
+        # Same number of elements?
+        self.assertEqual(len(input), len(anon))
+        # Keys all the same?
+        orig_keys = orig_hash.keys()
+        anon_keys = anon_hash.keys()
+        for key in orig_keys:
+            self.assertTrue(key in anon_keys)
+        # Values are all different
+        for key in orig_keys:
+            self.assertNotEqual(orig_hash[key], anon_hash[key])
+
     def test_simple_json_dict(self):
         input = ('{\"vendor\": \"Intel\", \"model\": \"n270\",'
                  ' \"arch\": \"i686\"}')
-        anon = random_json_replacement(input)
-        orig_hash = json.loads(input)
-        anon_hash = json.loads(anon)
-        # Same number of elements?
-        self.assertEqual(len(input), len(anon))
-        # Keys all the same?
-        orig_keys = orig_hash.keys()
-        anon_keys = anon_hash.keys()
-        for key in orig_keys:
-            self.assertTrue(key in anon_keys)
-        # Values are all different
-        for key in orig_keys:
-            self.assertNotEqual(orig_hash[key], anon_hash[key])
+        self.check_json(input)
 
     def test_nested_json_dict(self):
         input = '{\"vendor\": {\"eggs\": \"spam\", \"spam\": \"bacon\"}}'
-
-        anon = random_json_replacement(input)
-        orig_hash = json.loads(input)
-        anon_hash = json.loads(anon)
-        # Same number of elements?
-        self.assertEqual(len(input), len(anon))
-        # Keys all the same?
-        orig_keys = orig_hash.keys()
-        anon_keys = anon_hash.keys()
-        for key in orig_keys:
-            self.assertTrue(key in anon_keys)
-        # Values are all different
-        for key in orig_keys:
-            self.assertNotEqual(orig_hash[key], anon_hash[key])
+        self.check_json(input)
 
     def test_simple_json_randomness(self):
         input = '{"eggs": "spam", "spam": "bacon"}'
