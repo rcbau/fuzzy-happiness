@@ -166,3 +166,21 @@ class TestRandomIPAddressReplacement(testtools.TestCase):
                             r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
         new_addr = random_ipaddress_replacement('192.168.1.6')
         self.assertTrue(v4addr.match(new_addr))
+
+    def test_unusal_ipv4_1(self):
+        v4addr = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+        new_addr = random_ipaddress_replacement('127.1')
+        self.assertTrue(v4addr.match(new_addr))
+
+    def test_unusal_ipv4_2(self):
+        v4addr = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+                            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+        new_addr = random_ipaddress_replacement('192.168.1')
+        self.assertTrue(v4addr.match(new_addr))
+
+    def test_not_an_ipaddress(self):
+        new_addr = random_ipaddress_replacement('spam egg spam spam bacon '
+                                                'and spam')
+        self.assertEqual(None, new_addr)
