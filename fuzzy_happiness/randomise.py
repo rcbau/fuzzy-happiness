@@ -135,7 +135,6 @@ def randomness(old_value, column_type):
         return new_uuid
 
     # Note(mrda): TODO: The following types are not yet implemented here:
-    #     datetime
     #     ec2_id
     #     hostname
     #     integer
