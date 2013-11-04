@@ -1,11 +1,39 @@
 #!/usr/bin/python
+#
+# Copyright 2013 Rackspace Australia
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
 
 import datetime
 import re
+import os
 import sqlparse
 import sys
 
-#import attributes
+from oslo.config import cfg
+
+import attributes
+
+
+CONF = cfg.CONF
+
+opts = [
+    cfg.BoolOpt('add_descriptive_comments',
+                default=True,
+                help=('Add comments to output describing what we did to a '
+                      'given table.'))
+]
+CONF.register_opts(opts)
 
 
 TABLE_NAME_RE = re.compile('CREATE TABLE `(.+)`')
@@ -200,11 +228,34 @@ class DumpProcessor(object):
             counter += 1
 
 
-if __name__ == '__main__':
-    #anon_fields = attributes.load_configuration()
+filename_opt = cfg.StrOpt('filename',
+                          default=None,
+                          help='The filename to process',
+                          positional=True)
 
-    anon_fields = {}
-    dp = DumpProcessor('/home/mikal/datasets/nova_user_001.sql',
+
+def main():
+    CONF.register_cli_opt(filename_opt)
+    CONF(sys.argv[1:], project='fuzzy-happiness')
+
+    if not CONF.filename:
+        print 'Please specify a filename to process'
+        return 1
+
+    print 'Processing %s' % CONF.filename
+    if not os.path.exists(CONF.filename):
+        print 'Input file %s does not exist!' % CONF.filename
+        return 1
+    if not os.path.isfile(CONF.filename):
+        print 'Input %s is not a file!' % CONF.filename
+        return 1
+
+    # Load attributes from models.py
+    anon_fields = attributes.load_configuration()
+
+    dp = DumpProcessor(CONF.filename,
                        '/tmp/nova_user_001.sql.post',
                        anon_fields)
     dp.read_sql_dump()
+
+    return 0
