@@ -260,7 +260,7 @@ def main():
         print 'Please specify a filename to process'
         return 1
 
-    print 'Processing %s' % CONF.filename
+    print "Processing '%s'" % CONF.filename
     if not os.path.exists(CONF.filename):
         print 'Input file %s does not exist!' % CONF.filename
         return 1
@@ -281,6 +281,7 @@ def main():
                     print '>>> %s' % line.rstrip()
                     print '<<< %s' % processed.rstrip()
                 w.write(processed)
+            print "Wrote '%s'" % output_filename
 
     if CONF.debug:
         fuzz.dump_stats(CONF.filename)
