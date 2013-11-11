@@ -106,10 +106,10 @@ class Fuzzer(object):
 
             m = _re_table_index.search(line)
             if m:
-                self.cur_table_index += 1
                 self.schema[self.cur_table_name][self.cur_table_index] = \
                     {'name': m.group("index_name"),
                      'type': m.group("index_type")}
+                self.cur_table_index += 1
 
                 self.type_table.setdefault(m.group("index_type"), 0)
                 self.type_table[m.group("index_type")] += 1
@@ -194,21 +194,16 @@ class Fuzzer(object):
 
     def _anonymise(self, fields, table, line):
         """ Anonymise the supplied fields if this table needs anonymising """
-        # Need to find if any columns from table need anonymising
-        if not table in self.anon_fields:
-            return ",".join(fields)
-
-        for field_key in self.anon_fields[table]:
-            # Find the indexes we're interested in
-            # i.e. where is this field?
-            for idx in self.schema[table]:
-                if self.schema[table][idx]['name'] == field_key:
-                    col_name = self.schema[table][idx]['name']
-                    config = self.anon_fields.get(table, {})
-                    anon_type = config.get(col_name)
-                    fields[idx - 1] = self._transmogrify(
-                        fields[idx - 1], self.schema[table][idx]['type'],
-                        anon_type)
+        if table in self.anon_fields:
+            # Loop through all fields for this line
+            for index, elem in enumerate(fields):
+                field_name = self.schema[table][index]['name']
+                # Check to see if this is a field to be anonymised
+                if field_name in self.anon_fields[table]:
+                    fields[index] = self._transmogrify(
+                        elem,
+                        self.schema[table][index]['type'],
+                        self.anon_fields[table][field_name])
         return ",".join(fields)
 
     def _transmogrify(self, string, coltype, anontype):
