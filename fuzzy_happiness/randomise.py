@@ -144,12 +144,27 @@ def random_json_replacement(string):
     return json.dumps(json_obj)
 
 
+def random_hostname_replacement(string):
+    """Randomise a hostname"""
+    # Valid hostname chars, according to RFC1123, is approximately
+    # ([0-9a-z][0-9a-z\-]{0-62})(\.[0-9a-z][0-9a-z\-]{0-62})+
+    # We'll simplify here
+    allowed_chars = list('abcdefghijklmnopqrstuvwxyz0123456789')
+    keep_chars = list('-.')
+    replacement_dict = {
+        'hostname': (allowed_chars, allowed_chars),
+        'whitespace': (_WHITESPACE, None),
+        'keep': (keep_chars, None)
+    }
+    return random_str_replacement(string, replacement_dict)
+
+
 def randomness(old_value, column_type):
     """Generate a random value depending on the column_type using the
        old value as a reference for length and type"""
 
     # Special case randomisations
-    if old_value == 'NULL':
+    if old_value == 'NULL' or old_value.strip() == "":
         return old_value
     if column_type == 'uuid':
         new_uuid = "'fake%s'" % str(uuid.uuid4())[5:]
@@ -157,7 +172,6 @@ def randomness(old_value, column_type):
 
     # Note(mrda): TODO: The following types are not yet implemented here:
     #     ec2_id
-    #     hostname
     #     integer
     #     ip_addesss_v6
     #     key_name
@@ -190,6 +204,8 @@ def randomness(old_value, column_type):
                                       replacement_dictionary=replacement_dict)
     elif column_type == 'datetime':
         return random_datetime_replacement(old_value)
+    elif column_type == 'hostname':
+        return random_hostname_replacement(old_value)
     elif old_value[0] == '{':
         # If it looks like json...
         return random_json_replacement(old_value)
