@@ -13,9 +13,9 @@
 # under the License.
 
 import json
-import string
 import random
 import re
+import string
 import testtools
 
 from fuzzy_happiness.randomise import random_char_replacement
@@ -25,6 +25,7 @@ from fuzzy_happiness.randomise import random_json_replacement
 from fuzzy_happiness.randomise import randomness
 from fuzzy_happiness.randomise import random_pathname_replacement
 from fuzzy_happiness.randomise import random_str_replacement
+from fuzzy_happiness.randomise import random_hostname_replacement
 
 
 class TestRandomCharReplacement(testtools.TestCase):
@@ -230,3 +231,24 @@ class TestRandomJSONReplacement(testtools.TestCase):
         # Values are all different
         for key in orig_keys:
             self.assertNotEqual(orig_hash[key], anon_hash[key])
+
+
+class TestRandomHostnameReplacement(testtools.TestCase):
+
+    def test_simple_hostname(self):
+        allowable = list('abcdefghijklmnopqrstuvwxyz-0123456789')
+        new_str = random_hostname_replacement('sloth')
+        for i in new_str:
+            self.assertIn(i, allowable)
+
+    def test_simple_ws_hostname(self):
+        allowable = list(string.whitespace)
+        new_str = random_hostname_replacement(' ')
+        for i in new_str:
+            self.assertIn(i, allowable)
+
+    def test_complex_hostname(self):
+        allowable = list('abcdefghijklmnopqrstuvwxyz-.0123456789')
+        new_str = random_hostname_replacement('computer-63.foobar.com')
+        for i in new_str:
+            self.assertIn(i, allowable)

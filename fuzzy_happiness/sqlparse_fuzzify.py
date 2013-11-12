@@ -14,7 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import datetime
 import re
 import os
 import sqlparse
@@ -223,8 +222,8 @@ class DumpProcessor(object):
         counter = 0
         for column in row:
             print '    %s %s = %s' % (columns[counter][0],
-                                    columns[counter][1],
-                                    column)
+                                      columns[counter][1],
+                                      column)
             counter += 1
 
 
