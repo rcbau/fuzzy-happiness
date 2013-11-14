@@ -15,10 +15,12 @@
 # under the License.
 
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, mapper
 from nova.db.sqlalchemy import models
 from nova.db.sqlalchemy import utils
 from migrate import ForeignKeyConstraint
+
+import logging
 
 import attributes
 from randomise import randomness
@@ -69,34 +71,43 @@ def cascade_fkeys(metadata, restore=False):
 def fuzzify(engine, config):
     """Do the actual fuzzification based on the loaded attributes of
        the models."""
+    modelObjects = {}
     Session = sessionmaker(bind=engine)
     session = Session()
     metadata = MetaData(bind=engine, reflect=True)
     cascade_fkeys(metadata)
 
-    for model_name, columns in config.items():
-        table_name = getattr(models, model_name).__tablename__
-        tables = [getattr(models, model_name)]
+    for table_name, columns in config.items():
+        tables = []
+        if table_name in metadata.tables.keys():
+            tables.append(utils.get_table(engine, table_name))
         if 'shadow_' + table_name in metadata.tables.keys():
             tables.append(utils.get_table(engine, 'shadow_' + table_name))
         for table in tables:
-            q = session.query(table)
+            print "Doing table: " + str(table)
+            modelObjects[table] = type('Model_' + str(table), (object, ), {})
+            mapper(modelObjects[table], table)
+            q = session.query(modelObjects[table])
             for row in q.all():
-                for column, column_type in columns:
-                    setattr(row, column,
-                            randomness(getattr(row, column), column_type))
-
-    session.commit()
+                for column, column_type in columns.items():
+                    if hasattr(row, column):
+                        before = getattr(row, column)
+                        after = randomness(before, column_type)
+                        setattr(row, column, after)
     cascade_fkeys(metadata, restore=True)
+    session.commit()
+    session.flush()
 
 
 def main():
+    logging.basicConfig()
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
+
     # Import the database to modify
     #os.system('mysql -u root nova_fuzzy < nova.sql')
 
     # Set up the session
-    engine = create_engine('mysql://root:tester@localhost/nova_fuzzy',
-                           echo=True)
+    engine = create_engine('mysql://root:tester@localhost/nova_user_001')
 
     # Grab the randomisation commands
     config = attributes.load_configuration()
@@ -106,3 +117,7 @@ def main():
 
     # Dump the modified database
     # os.system('mysqldump -u root nova_fuzzy > nova_fuzzy.sql')
+
+
+if __name__ == '__main__':
+    main()
