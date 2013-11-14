@@ -117,7 +117,3 @@ def main():
 
     # Dump the modified database
     # os.system('mysqldump -u root nova_fuzzy > nova_fuzzy.sql')
-
-
-if __name__ == '__main__':
-    main()
