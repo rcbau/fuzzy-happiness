@@ -56,7 +56,7 @@ def random_str_replacement(string,
     if string is None:
         return None
 
-    string = list(string)
+    string = list(str(string))
 
     for i, char in enumerate(string):
         string[i] = random_char_replacement(
@@ -193,7 +193,7 @@ def randomness(old_value, column_type):
                                       replacement_dictionary=replacement_dict)
     elif column_type in ('varchar', 'text', 'mediumtext'):
         return random_str_replacement(old_value)
-    elif column_type in ('bigint', 'tinyint', 'int'):
+    elif column_type in ('bigint', 'tinyint', 'int', 'long'):
         return random_str_replacement(old_value)
     elif column_type == 'float':
         replacement_dict = {
