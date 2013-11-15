@@ -51,6 +51,15 @@ def load_configuration():
     return configs
 
 
+def map_tables_to_model_names(tables):
+    results = {}
+    for name, obj in inspect.getmembers(models):
+        if hasattr(obj, '__tablename__'):
+            if obj.__tablename__ in tables:
+                results[obj.__tablename__] = name
+    return results
+
+
 def main():
     CONF(sys.argv[1:], project='fuzzy-happiness')
     print load_configuration()
